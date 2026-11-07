@@ -164,6 +164,20 @@ class TcpPrefilterTests(unittest.TestCase):
         tcp_prefilter([node], timeout_seconds=2.0, workers=1, attempts=1, connector=connector)
         self.assertEqual(observed, [2.0])
 
+    def test_tcp_prefilter_discards_invalid_hostname_without_aborting(self):
+        invalid = make_node("invalid", "a" * 64, 443)
+        valid = make_node("valid", "reachable.example", 443)
+
+        def connector(endpoint: tuple[str, int], timeout: float):
+            if endpoint[0].startswith("a"):
+                raise UnicodeError("label too long")
+            return DummyConnection()
+
+        kept = tcp_prefilter(
+            [invalid, valid], timeout_seconds=2.0, workers=2, attempts=1, connector=connector
+        )
+        self.assertEqual(kept, [valid])
+
 
 if __name__ == "__main__":
     unittest.main()

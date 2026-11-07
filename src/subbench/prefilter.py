@@ -66,7 +66,9 @@ def tcp_prefilter(
                 if callable(close):
                     close()
                 return endpoint, round((time.monotonic() - started) * 1000, 1)
-            except (OSError, TimeoutError):
+            except (OSError, TimeoutError, UnicodeError, ValueError):
+                # Invalid hostnames from a public feed are node-local failures.
+                # They must not abort the whole prefilter worker pool.
                 continue
         return endpoint, None
 
