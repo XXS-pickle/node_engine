@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -32,13 +33,15 @@ def prepare_names(nodes: list[Node]) -> None:
 
 
 def _branding_suffix() -> str:
-    path = Path(__file__).resolve().parents[2] / "config" / "branding.yaml"
-    try:
-        document = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
-        raise ValueError("Branding configuration is invalid.") from None
-    branding = document.get("branding") if isinstance(document, dict) else None
-    suffix = branding.get("suffix") if isinstance(branding, dict) else None
+    suffix = os.environ.get("BRANDING_SUFFIX")
+    if suffix is None:
+        path = Path(__file__).resolve().parents[2] / "config" / "branding.yaml"
+        try:
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            raise ValueError("Branding configuration is invalid.") from None
+        branding = document.get("branding") if isinstance(document, dict) else None
+        suffix = branding.get("suffix") if isinstance(branding, dict) else None
     if not isinstance(suffix, str) or not suffix.strip() or "\n" in suffix or "\r" in suffix:
         raise ValueError("Branding configuration is invalid.")
     return suffix

@@ -139,6 +139,7 @@ jobs:
         shell: bash
         env:
           SOURCE_URLS: ${{ secrets.SOURCE_URLS }}
+          BRANDING_SUFFIX: " | tg@zzyyffxx"
           PYTHONUTF8: "1"
           PYTHONIOENCODING: "utf-8"
           SOURCE_TIMEOUT_SECONDS: "60"

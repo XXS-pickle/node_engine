@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,7 +9,7 @@ from urllib.parse import unquote
 import yaml
 
 from subbench.models import Node
-from subbench.output import _rename_uri, write_outputs
+from subbench.output import _branding_suffix, _rename_uri, write_outputs
 
 
 class OutputTests(unittest.TestCase):
@@ -39,6 +40,17 @@ class OutputTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "empty"):
                 write_outputs(output, [], [])
             self.assertEqual(clash_path.read_text(encoding="utf-8"), "last-known-good")
+
+    def test_branding_suffix_can_be_provided_by_environment(self):
+        previous = os.environ.get("BRANDING_SUFFIX")
+        try:
+            os.environ["BRANDING_SUFFIX"] = " | test"
+            self.assertEqual(_branding_suffix(), " | test")
+        finally:
+            if previous is None:
+                os.environ.pop("BRANDING_SUFFIX", None)
+            else:
+                os.environ["BRANDING_SUFFIX"] = previous
 
     def test_channel_branding_is_unique_and_idempotent(self):
         suffix = " | tg@zzyyffxx"
