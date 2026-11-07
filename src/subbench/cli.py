@@ -334,7 +334,8 @@ def run(args: argparse.Namespace) -> int:
         ) as benchmark:
             write_mihomo_config(workdir / "mihomo-nodes.yaml", nodes)
             nodes = benchmark.benchmark(nodes)
-    except Exception:
+    except Exception as exc:
+        print(f"Mihomo benchmark failed: {type(exc).__name__}: {str(exc)[:160]}", file=sys.stderr)
         _print_run_summary(
             started_at=started_at,
             sources_configured=len(source_specs),
