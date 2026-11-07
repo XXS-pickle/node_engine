@@ -86,6 +86,28 @@ class BenchmarkTests(unittest.TestCase):
         benchmark.benchmark(nodes)
         self.assertEqual(tested, ["one", "two", "three"])
 
+    def test_speed_failure_keeps_a_latency_valid_node(self):
+        node = make_node("one", 100)
+        benchmark = MihomoBenchmark(
+            binary=Path("mihomo"),
+            workdir=Path(".work-test"),
+            nodes=[node],
+            latency_url="https://www.google.com/generate_204",
+            speed_url="https://example.com/test.bin",
+            geo_url="https://api.country.is/",
+            timeout_ms=8000,
+            speed_bytes=1000,
+            speed_limit=1,
+            speed_timeout_seconds=8,
+            workers=1,
+        )
+        benchmark.benchmark_latency = lambda candidates: candidates
+        benchmark.speed = lambda candidate: candidate.metadata.__setitem__("speed_test_failed", True) or candidate
+        benchmark.geolocate = lambda candidate, proxy_port=None: candidate
+        self.assertEqual(benchmark.benchmark([node]), [node])
+        self.assertIsNone(node.error)
+        self.assertTrue(node.metadata["speed_test_failed"])
+
     def test_filter_rejects_incomplete_or_failed_measurements(self):
         nodes = [
             make_node("good", 100, 5.0),
@@ -107,7 +129,7 @@ class BenchmarkTests(unittest.TestCase):
         )
         self.assertEqual([node.name for node in filtered], ["latency-only"])
 
-    def test_speed_disabled_skips_location_checks(self):
+    def test_speed_disabled_still_locates_output_nodes(self):
         nodes = [make_node("source name one", 100), make_node("source name two", 200)]
         benchmark = MihomoBenchmark(
             binary=Path("mihomo"),
@@ -124,10 +146,12 @@ class BenchmarkTests(unittest.TestCase):
             speed_enabled=False,
         )
         benchmark.benchmark_latency = lambda candidates: candidates
-        benchmark.geolocate = lambda node, proxy_port=None: self.fail("location lookup must stay disabled")
+        located: list[str] = []
+        benchmark.geolocate = lambda node, proxy_port=None: located.append(node.name)
         benchmark.speed = lambda node: self.fail("speed test must stay disabled")
         tested = benchmark.benchmark(nodes)
         self.assertEqual([node.name for node in tested], ["source name one", "source name two"])
+        self.assertEqual(located, ["source name one", "source name two"])
 
     def test_cloudflare_trace_geo_payload(self):
         country, exit_ip = _parse_geo_payload("ip=203.0.113.10\nloc=JP\ncolo=NRT\n")

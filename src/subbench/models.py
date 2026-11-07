@@ -39,7 +39,6 @@ class Node:
             "server": server,
             "port": port,
             "source": self.source,
-            "original_name": self.metadata.get("original_name"),
             "country_code": self.metadata.get("country_code"),
             "exit_ip": self.metadata.get("exit_ip"),
             "tcp_connect_ms": self.metadata.get("tcp_connect_ms"),

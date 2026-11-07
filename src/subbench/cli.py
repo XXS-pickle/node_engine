@@ -302,8 +302,6 @@ def run(args: argparse.Namespace) -> int:
         )
         raise RuntimeError("No nodes reached Mihomo testing.")
 
-    for node in nodes:
-        node.metadata.setdefault("original_name", node.name)
     prepare_names(nodes)
     nodes_tested = len(nodes)
     speed_test_enabled = _bool_env("SPEED_TEST_ENABLED", False)
@@ -329,6 +327,8 @@ def run(args: argparse.Namespace) -> int:
             speed_limit=_int_env("SPEED_TEST_LIMIT", 0),
             speed_timeout_seconds=_int_env("SPEED_TIMEOUT_SECONDS", 8),
             workers=_int_env("BENCHMARK_WORKERS", 32),
+            geo_limit=_int_env("GEOIP_LIMIT", 300),
+            speed_workers=_int_env("SPEED_TEST_WORKERS", 8),
             speed_enabled=speed_test_enabled,
             latency_attempts=_int_env("LATENCY_TEST_ATTEMPTS", 1),
         ) as benchmark:
@@ -361,7 +361,7 @@ def run(args: argparse.Namespace) -> int:
         nodes,
         _int_env("MAX_LATENCY_MS", 5000),
         _float_env("MIN_SPEED_MBPS", 0.1),
-        require_speed=speed_test_enabled,
+        require_speed=False,
     )
     if _bool_env("ALIYUN_FC_ENABLED", False):
         aliyun_fc_url = normalize_aliyun_url(os.environ.get("ALIYUN_FC_URL", ""))

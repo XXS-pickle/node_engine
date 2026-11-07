@@ -43,6 +43,8 @@ class MihomoBenchmark:
         speed_limit: int,
         speed_timeout_seconds: int,
         workers: int,
+        geo_limit: int = 300,
+        speed_workers: int = 8,
         speed_enabled: bool = True,
         latency_attempts: int = 2,
     ) -> None:
@@ -54,9 +56,11 @@ class MihomoBenchmark:
         self.geo_urls = [item.strip() for item in geo_url.split(",") if item.strip()]
         self.timeout_ms = timeout_ms
         self.speed_bytes = speed_bytes
-        self.speed_limit = speed_limit
+        self.speed_limit = max(0, speed_limit)
         self.speed_timeout_seconds = max(1, speed_timeout_seconds)
         self.workers = max(1, workers)
+        self.geo_limit = max(0, geo_limit)
+        self.speed_workers = max(1, min(speed_workers, self.workers))
         self.latency_attempts = max(1, latency_attempts)
         self.speed_enabled = speed_enabled
         self.controller = "http://127.0.0.1:9090"
@@ -184,14 +188,13 @@ class MihomoBenchmark:
         selected.raise_for_status()
 
     def speed(self, node: Node) -> Node:
+        proxy_port = self.node_proxy_ports.get(node.name, self.proxy_port)
         try:
-            self.select(node)
-
             started = time.monotonic()
             received = 0
             with requests.get(
                 self.speed_url,
-                proxies=self._proxies_for_port(self.proxy_port),
+                proxies=self._proxies_for_port(proxy_port),
                 stream=True,
                 timeout=(min(10, self.speed_timeout_seconds), self.speed_timeout_seconds),
             ) as response:
@@ -202,21 +205,33 @@ class MihomoBenchmark:
                         break
             elapsed = max(time.monotonic() - started, 0.001)
             node.speed_mbps = round(received * 8 / elapsed / 1_000_000, 2)
-            self.geolocate(node)
-        except (requests.RequestException, ValueError) as exc:
-            node.error = f"speed: {exc}"
+        except (requests.RequestException, ValueError):
+            node.metadata["speed_test_failed"] = True
+        return node
+
+    def _geolocate_node(self, node: Node) -> Node:
+        self.geolocate(node, self.node_proxy_ports.get(node.name, self.proxy_port))
         return node
 
     def benchmark(self, nodes: list[Node]) -> list[Node]:
         measured = self.benchmark_latency(nodes)
-        valid = [node for node in measured if node.latency_ms is not None]
+        valid = [node for node in measured if node.latency_ms is not None and node.error is None]
         valid.sort(key=lambda node: (node.latency_ms or 10**9, node.name))
-        if not self.speed_enabled:
-            return valid
-
-        speed_candidates = valid if self.speed_limit <= 0 else valid[: self.speed_limit]
-        for node in speed_candidates:
-            self.speed(node)
+        if self.speed_enabled:
+            speed_candidates = valid if self.speed_limit <= 0 else valid[: self.speed_limit]
+            with ThreadPoolExecutor(max_workers=self.speed_workers) as executor:
+                list(executor.map(self.speed, speed_candidates))
+        valid.sort(
+            key=lambda node: (
+                node.speed_mbps is None,
+                -(node.speed_mbps or 0),
+                node.latency_ms or 10**9,
+                node.name,
+            )
+        )
+        geo_candidates = valid if self.geo_limit <= 0 else valid[: self.geo_limit]
+        with ThreadPoolExecutor(max_workers=min(16, self.workers)) as executor:
+            list(executor.map(self._geolocate_node, geo_candidates))
         return valid
 
 

@@ -93,16 +93,18 @@ try {
     $env:TCP_CONNECT_ATTEMPTS = "1"
     $env:TCP_PREFILTER_WORKERS = "128"
     $env:MAX_LATENCY_MS = "$MaxLatencyMs"
-    $env:LATENCY_TEST_URL = "https://www.gstatic.com/generate_204"
+    $env:LATENCY_TEST_URL = "https://cp.cloudflare.com/generate_204"
     $env:LATENCY_TIMEOUT_MS = "5000"
     $env:LATENCY_TEST_ATTEMPTS = "1"
     $env:MIN_SPEED_MBPS = "$MinSpeedMbps"
     $env:SPEED_TEST_ENABLED = if ($EnableSpeedTest) { "1" } else { "0" }
-    $env:SPEED_TEST_LIMIT = "0"
+    $env:SPEED_TEST_LIMIT = if ($EnableSpeedTest) { "100" } else { "0" }
+    $env:SPEED_TEST_WORKERS = "8"
     $env:SPEED_TEST_BYTES = "$SpeedTestBytes"
     $env:SPEED_TIMEOUT_SECONDS = "8"
     $env:BENCHMARK_WORKERS = "32"
     $env:GEOIP_TEST_URLS = "https://www.cloudflare.com/cdn-cgi/trace,https://api.country.is/"
+    $env:GEOIP_LIMIT = "300"
 
     & $PythonExe -m subbench run --mihomo $Mihomo --output $Output --workdir $WorkDir
     if ($LASTEXITCODE -ne 0) {

@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-import os
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -13,64 +13,78 @@ import yaml
 from .models import Node
 
 
-def _safe_name(name: str, index: int, used: set[str]) -> str:
-    clean = " ".join(name.split()).strip() or f"node-{index:03d}"
-    candidate = clean[:80]
-    suffix = 2
-    while candidate in used:
-        candidate = f"{clean[:70]}-{suffix}"
-        suffix += 1
-    used.add(candidate)
-    return candidate
+COUNTRY_NAMES = {
+    "HK": "香港",
+    "TW": "台湾",
+    "JP": "日本",
+    "SG": "新加坡",
+    "US": "美国",
+    "KR": "韩国",
+    "GB": "英国",
+    "DE": "德国",
+    "FR": "法国",
+    "CA": "加拿大",
+    "NL": "荷兰",
+    "AU": "澳大利亚",
+    "RU": "俄罗斯",
+    "IN": "印度",
+    "TR": "土耳其",
+    "TH": "泰国",
+    "MY": "马来西亚",
+    "ID": "印度尼西亚",
+    "PH": "菲律宾",
+    "VN": "越南",
+    "BR": "巴西",
+    "AE": "阿联酋",
+}
 
 
 def prepare_names(nodes: list[Node]) -> None:
+    """Give Mihomo internal benchmark proxies stable, unique temporary names."""
     used: set[str] = {"AUTO", "PROXY", "BENCHMARK", "DIRECT"}
     for index, node in enumerate(nodes, start=1):
-        node.name = _safe_name(node.name, index, used)
-        if node.clash:
-            node.clash["name"] = node.name
-
-
-def _branding_suffix() -> str:
-    suffix = os.environ.get("BRANDING_SUFFIX")
-    if suffix is None:
-        path = Path(__file__).resolve().parents[2] / "config" / "branding.yaml"
-        try:
-            document = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except (OSError, yaml.YAMLError):
-            raise ValueError("Branding configuration is invalid.") from None
-        branding = document.get("branding") if isinstance(document, dict) else None
-        suffix = branding.get("suffix") if isinstance(branding, dict) else None
-    if not isinstance(suffix, str) or not suffix.strip() or "\n" in suffix or "\r" in suffix:
-        raise ValueError("Branding configuration is invalid.")
-    return suffix
-
-
-def _apply_channel_branding(nodes: list[Node]) -> None:
-    suffix = _branding_suffix()
-    max_base_length = 80 - len(suffix)
-    if max_base_length < 1:
-        raise ValueError("Branding suffix is too long.")
-
-    used: set[str] = {"AUTO", "PROXY", "BENCHMARK", "DIRECT"}
-    for index, node in enumerate(nodes, start=1):
-        name = " ".join(node.name.split()).strip()
-        if name.endswith(suffix):
-            name = name[: -len(suffix)].rstrip()
-        base = (name or f"node-{index:03d}")[:max_base_length].rstrip()
-        if not base:
-            base = f"node-{index:03d}"[:max_base_length]
+        base = f"node-{index:04d}"
         candidate = base
-        serial = 2
-        while f"{candidate}{suffix}" in used:
-            marker = f"_{serial}"
-            candidate = f"{base[:max(1, max_base_length - len(marker))].rstrip()}{marker}"
-            serial += 1
-        node.name = f"{candidate}{suffix}"
-        used.add(node.name)
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        used.add(candidate)
+        node.name = candidate
+        if node.clash:
+            node.clash["name"] = candidate
+
+
+def _flag(country_code: str) -> str:
+    if len(country_code) != 2 or not country_code.isalpha():
+        return "🌐"
+    return "".join(chr(0x1F1E6 + ord(letter) - ord("A")) for letter in country_code.upper())
+
+
+def _region_label(node: Node) -> str:
+    country_code = str(node.metadata.get("country_code") or "").upper()
+    if not country_code:
+        return "🌐 未知"
+    return f"{_flag(country_code)} {COUNTRY_NAMES.get(country_code, country_code)}"
+
+
+def _numbered_name(label: str, number: int) -> str:
+    width = max(2, len(str(number)))
+    return f"{label} {number:0{width}d}"
+
+
+def apply_display_names(nodes: list[Node]) -> dict[str, list[str]]:
+    """Replace all source labels with short country/number display names."""
+    counters: Counter[str] = Counter()
+    grouped: dict[str, list[str]] = defaultdict(list)
+    for node in nodes:
+        label = _region_label(node)
+        counters[label] += 1
+        node.name = _numbered_name(label, counters[label])
         if node.clash:
             node.clash["name"] = node.name
+        grouped[label].append(node.name)
+    return dict(grouped)
 
 
 def _rename_uri(uri: str, scheme: str, name: str) -> str:
@@ -88,6 +102,45 @@ def _rename_uri(uri: str, scheme: str, name: str) -> str:
     return f"{main}#{quote(name, safe='')}"
 
 
+def _proxy_groups(nodes: list[Node], grouped_names: dict[str, list[str]]) -> list[dict[str, object]]:
+    all_names = [node.name for node in nodes]
+    speed_names = [node.name for node in nodes if node.speed_mbps is not None]
+    ordered_regions = sorted(grouped_names, key=lambda label: (-len(grouped_names[label]), label))
+    featured_regions = ordered_regions[:12]
+    covered = {name for label in featured_regions for name in grouped_names[label]}
+    other_names = [name for name in all_names if name not in covered]
+
+    groups: list[dict[str, object]] = [
+        {
+            "name": "🚀 自动优选",
+            "type": "url-test",
+            "url": "https://cp.cloudflare.com/generate_204",
+            "interval": 300,
+            "tolerance": 100,
+            "proxies": all_names,
+        },
+        {
+            "name": "⚡ 速度优选",
+            "type": "select",
+            "proxies": ["🚀 自动优选", *speed_names],
+        },
+    ]
+    for label in featured_regions:
+        groups.append({"name": label, "type": "select", "proxies": grouped_names[label]})
+    if other_names:
+        groups.append({"name": "🌐 其他地区", "type": "select", "proxies": other_names})
+    groups.append({"name": "🌐 全部节点", "type": "select", "proxies": all_names})
+    manual_choices = [
+        "🚀 自动优选",
+        "⚡ 速度优选",
+        *featured_regions,
+        *( ["🌐 其他地区"] if other_names else [] ),
+        "🌐 全部节点",
+        "DIRECT",
+    ]
+    return [{"name": "🎯 手动选择", "type": "select", "proxies": manual_choices}, *groups]
+
+
 def write_outputs(
     output_dir: Path,
     nodes: list[Node],
@@ -97,8 +150,7 @@ def write_outputs(
     if not nodes:
         raise ValueError("Refusing to write empty subscription outputs.")
     output_dir.mkdir(parents=True, exist_ok=True)
-    prepare_names(nodes)
-    _apply_channel_branding(nodes)
+    grouped_names = apply_display_names(nodes)
 
     uris = [_rename_uri(node.uri, node.scheme, node.name) for node in nodes if node.uri]
     raw = "\n".join(uris) + ("\n" if uris else "")
@@ -110,21 +162,6 @@ def write_outputs(
     names = [proxy["name"] for proxy in proxies]
     if not proxies or len(names) != len(set(names)):
         raise ValueError("Final Clash proxy names are empty or duplicated.")
-    if names:
-        proxy_groups = [
-            {
-                "name": "AUTO",
-                "type": "url-test",
-                "url": "https://www.gstatic.com/generate_204",
-                "interval": 300,
-                "tolerance": 100,
-                "proxies": names,
-            },
-            {"name": "PROXY", "type": "select", "proxies": ["AUTO", "DIRECT", *names]},
-        ]
-    else:
-        proxy_groups = [{"name": "PROXY", "type": "select", "proxies": ["DIRECT"]}]
-
     clash_config = {
         "mixed-port": 7890,
         "allow-lan": False,
@@ -132,8 +169,8 @@ def write_outputs(
         "log-level": "warning",
         "ipv6": False,
         "proxies": proxies,
-        "proxy-groups": proxy_groups,
-        "rules": ["MATCH,PROXY"],
+        "proxy-groups": _proxy_groups(nodes, grouped_names),
+        "rules": ["MATCH,🎯 手动选择"],
     }
     (output_dir / "clash.yaml").write_text(
         yaml.safe_dump(clash_config, allow_unicode=True, sort_keys=False), encoding="utf-8"
