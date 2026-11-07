@@ -3,9 +3,8 @@ name: Select local or cloud runner
 on:
   workflow_dispatch:
   schedule:
-    # 08:30 and 17:00 Asia/Shanghai (UTC+8)
-    - cron: "30 0 * * *"
-    - cron: "0 9 * * *"
+    # Every three hours, offset from the top of the hour to reduce queue delays.
+    - cron: "17 */3 * * *"
   push:
     branches: [main]
     paths:

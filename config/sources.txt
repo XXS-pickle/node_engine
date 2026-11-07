@@ -1,29 +1,9 @@
-# One public subscription or webpage URL per line.
-# Optional label syntax: source-name | https://example.com/subscription
-#
-# Keep private URLs out of this file. Store them in the SOURCE_URLS
-# repository secret as newline-separated values.
-
-# Public sources supplied for this project.
-https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt
-https://openproxylist.com/v2ray/rawlist/subscribe
-https://cdn.jsdelivr.net/gh/ermaozi/get_subscribe@main/subscribe/v2ray.txt
-https://raw.githubusercontent.com/free18/v2ray/refs/heads/main/v.txt
-https://raw.githubusercontent.com/peasoft/NoMoreWalls/refs/heads/master/list.txt
-https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/refs/heads/master/list.txt
-https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/all.txt
-https://cdn.jsdelivr.net/gh/shaoyouvip/free@main/base64.txt
-https://raw.githubusercontent.com/Barabama/FreeNodes/HEAD/nodes/merged.txt
-https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/v2ray-base64.txt
-https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/nodes.txt
-https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub
-https://raw.githubusercontent.com/sunmiao4458/free-proxy-airport/main/output/clash.yaml
-https://raw.githubusercontent.com/PrinceVSFX/Adapt-Configs/main/Configs/Adapt_VPN.txt
-https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt
-# V2Nodes rotates its public subscription key. The landing page is resolved
-# automatically on every build, so no key needs to be stored here.
-V2Nodes (automatic key) | https://www.v2nodes.com/
-
-# URLs containing private subscription keys belong in the GitHub Actions
-# SOURCE_URLS secret instead of this public file:
-# https://freesocks.org/api/v1/sub/<your-subscription-token>
+# Public aggregate subscriptions. One final feed per project; no upstream recursion.
+https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/clash.yaml
+https://raw.githubusercontent.com/wuge0/free-nodes/main/output/clash.yaml
+https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.meta.yml
+https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/splitted/mixed
+https://raw.githubusercontent.com/free-nodes/v2rayfree/main/sub
+https://raw.githubusercontent.com/Barabama/FreeNodes/refs/heads/main/nodes/merged.yaml
+https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/clash_config.yaml
+https://blog.ermao.net/sub/clash/ermao.net

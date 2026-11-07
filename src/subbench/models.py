@@ -23,7 +23,7 @@ class Node:
             normalized = {
                 key: value
                 for key, value in self.clash.items()
-                if key not in {"name", "dialer-proxy"}
+                if key != "name"
             }
             return json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 

@@ -1,8 +1,10 @@
 import base64
 import json
 import unittest
+from copy import deepcopy
 
-from subbench.parsers import parse_document, parse_uri
+from subbench.models import Node
+from subbench.parsers import count_raw_entries, parse_document, parse_uri
 
 
 class ParserTests(unittest.TestCase):
@@ -95,6 +97,77 @@ proxies:
             "b",
         )
         self.assertEqual(first.canonical_key(), second.canonical_key())
+
+    def test_raw_entry_count_supports_yaml_and_base64(self):
+        yaml_text = """
+proxies:
+  - name: one
+    type: trojan
+    server: one.example
+    port: 443
+    password: first
+  - name: two
+    type: trojan
+    server: two.example
+    port: 443
+    password: second
+"""
+        self.assertEqual(count_raw_entries(yaml_text), 2)
+        uris = "vless://id@one.example:443?encryption=none#one\nss://id@two.example:443#two"
+        encoded = base64.b64encode(uris.encode("utf-8")).decode("ascii")
+        self.assertEqual(count_raw_entries(encoded), 2)
+
+    def test_clash_canonical_key_includes_all_connection_fields(self):
+        base = {
+            "name": "original",
+            "type": "vless",
+            "server": "host.example",
+            "port": 443,
+            "uuid": "user-id",
+            "password": "password",
+            "cipher": "aes-128-gcm",
+            "network": "ws",
+            "tls": True,
+            "servername": "sni.example",
+            "ws-opts": {"path": "/ws", "headers": {"Host": "host.example"}},
+            "flow": "xtls-rprx-vision",
+            "reality-opts": {"public-key": "public-key", "short-id": "short-id"},
+            "plugin": "obfs",
+            "plugin-opts": {"mode": "tls"},
+            "dialer-proxy": "upstream",
+        }
+        original = Node(uri="", scheme="vless", name="original", clash=base, source="source-01")
+        renamed = deepcopy(base)
+        renamed["name"] = "display name only"
+        self.assertEqual(
+            original.canonical_key(),
+            Node(uri="", scheme="vless", name="display name only", clash=renamed, source="source-02").canonical_key(),
+        )
+
+        variants = [
+            ("server", "other.example"),
+            ("port", 8443),
+            ("uuid", "other-id"),
+            ("password", "other-password"),
+            ("cipher", "chacha20-poly1305"),
+            ("network", "grpc"),
+            ("tls", False),
+            ("servername", "other-sni.example"),
+            ("ws-opts", {"path": "/other", "headers": {"Host": "host.example"}}),
+            ("flow", ""),
+            ("reality-opts", {"public-key": "other-key", "short-id": "short-id"}),
+            ("plugin", "v2ray-plugin"),
+            ("plugin-opts", {"mode": "websocket"}),
+            ("dialer-proxy", "DIRECT"),
+        ]
+        for field, value in variants:
+            changed = deepcopy(base)
+            changed[field] = value
+            with self.subTest(field=field):
+                self.assertNotEqual(
+                    original.canonical_key(),
+                    Node(uri="", scheme="vless", name="original", clash=changed, source="test").canonical_key(),
+                )
 
     def test_shadowsocks_legacy_cipher_is_normalized(self):
         credential = base64.urlsafe_b64encode(b"chacha20-poly1305:secret").decode().rstrip("=")

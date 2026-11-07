@@ -118,6 +118,17 @@ def extract_uris(text: str) -> list[str]:
     return [match.rstrip(".,);]}") for match in URI_PATTERN.findall(html.unescape(candidate))]
 
 
+def count_raw_entries(text: str) -> int:
+    count = len(extract_uris(text))
+    try:
+        document = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return count
+    if isinstance(document, dict) and isinstance(document.get("proxies"), list):
+        count += len(document["proxies"])
+    return count
+
+
 def parse_document(
     text: str,
     source: str,

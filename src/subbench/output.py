@@ -31,6 +31,45 @@ def prepare_names(nodes: list[Node]) -> None:
             node.clash["name"] = node.name
 
 
+def _branding_suffix() -> str:
+    path = Path(__file__).resolve().parents[2] / "config" / "branding.yaml"
+    try:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        raise ValueError("Branding configuration is invalid.") from None
+    branding = document.get("branding") if isinstance(document, dict) else None
+    suffix = branding.get("suffix") if isinstance(branding, dict) else None
+    if not isinstance(suffix, str) or not suffix.strip() or "\n" in suffix or "\r" in suffix:
+        raise ValueError("Branding configuration is invalid.")
+    return suffix
+
+
+def _apply_channel_branding(nodes: list[Node]) -> None:
+    suffix = _branding_suffix()
+    max_base_length = 80 - len(suffix)
+    if max_base_length < 1:
+        raise ValueError("Branding suffix is too long.")
+
+    used: set[str] = {"AUTO", "PROXY", "BENCHMARK", "DIRECT"}
+    for index, node in enumerate(nodes, start=1):
+        name = " ".join(node.name.split()).strip()
+        if name.endswith(suffix):
+            name = name[: -len(suffix)].rstrip()
+        base = (name or f"node-{index:03d}")[:max_base_length].rstrip()
+        if not base:
+            base = f"node-{index:03d}"[:max_base_length]
+        candidate = base
+        serial = 2
+        while f"{candidate}{suffix}" in used:
+            marker = f"_{serial}"
+            candidate = f"{base[:max(1, max_base_length - len(marker))].rstrip()}{marker}"
+            serial += 1
+        node.name = f"{candidate}{suffix}"
+        used.add(node.name)
+        if node.clash:
+            node.clash["name"] = node.name
+
+
 def _rename_uri(uri: str, scheme: str, name: str) -> str:
     if scheme == "vmess" and uri.startswith("vmess://"):
         try:
@@ -47,8 +86,11 @@ def _rename_uri(uri: str, scheme: str, name: str) -> str:
 
 
 def write_outputs(output_dir: Path, nodes: list[Node], source_errors: list[dict[str, str]]) -> None:
+    if not nodes:
+        raise ValueError("Refusing to write empty subscription outputs.")
     output_dir.mkdir(parents=True, exist_ok=True)
     prepare_names(nodes)
+    _apply_channel_branding(nodes)
 
     uris = [_rename_uri(node.uri, node.scheme, node.name) for node in nodes if node.uri]
     raw = "\n".join(uris) + ("\n" if uris else "")
@@ -58,12 +100,14 @@ def write_outputs(output_dir: Path, nodes: list[Node], source_errors: list[dict[
 
     proxies = [node.clash for node in nodes if node.clash]
     names = [proxy["name"] for proxy in proxies]
+    if not proxies or len(names) != len(set(names)):
+        raise ValueError("Final Clash proxy names are empty or duplicated.")
     if names:
         proxy_groups = [
             {
                 "name": "AUTO",
                 "type": "url-test",
-                "url": "https://www.google.com/generate_204",
+                "url": "https://www.gstatic.com/generate_204",
                 "interval": 300,
                 "tolerance": 100,
                 "proxies": names,

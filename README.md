@@ -1,12 +1,12 @@
 # Free Nodes
 
-[![Build subscriptions](https://github.com/735754647/Free-Nodes/actions/workflows/build.yml/badge.svg)](https://github.com/735754647/Free-Nodes/actions/workflows/build.yml)
+[![Build subscriptions](https://github.com/XXS-pickle/node_engine/actions/workflows/build.yml/badge.svg)](https://github.com/XXS-pickle/node_engine/actions/workflows/build.yml)
 
 [简体中文](#简体中文) | [English](#english)
 
 ## 简体中文
 
-一个自动收集、解析、去重和测速公开代理节点的 GitHub Actions 项目。项目使用 Mihomo 对候选节点进行实际连通性与下载速度测试，并通过 GitHub Pages 生成 V2Ray 和 Clash/Mihomo 订阅。
+本项目基于 735754647/Free-Nodes，复用其多来源采集、协议解析、完整连接参数去重、Mihomo External Controller 测活和 GitHub Pages 发布。Actions 每 3 小时抓取 `config/sources.txt` 中的成品订阅，使用 48 并发通过 Mihomo 访问 `https://www.gstatic.com/generate_204`，每节点超时 5000ms；只保留通过节点，名称统一添加 ` | tg@zzyyffxx`。
 
 > 免费节点来自公开网络，可能随时失效、限速或被修改。请勿用于传输敏感信息，也不要将测速结果视为长期可用保证。
 
@@ -14,11 +14,11 @@
 
 | 类型 | 订阅链接 | 说明 |
 | --- | --- | --- |
-| V2Ray | `https://735754647.github.io/Free-Nodes/v2ray.txt` | Base64 编码订阅，适用于 v2rayN、v2rayNG 等客户端 |
-| Clash / Mihomo | `https://735754647.github.io/Free-Nodes/clash.yaml` | 完整 Clash/Mihomo 配置，包含自动延迟选择组 |
-| 原始节点 | `https://735754647.github.io/Free-Nodes/v2ray-raw.txt` | 未进行 Base64 编码的节点链接 |
-| 测速报告 | `https://735754647.github.io/Free-Nodes/report.json` | 节点来源、延迟、速度和错误信息 |
-| 状态页面 | `https://735754647.github.io/Free-Nodes/` | 最近一次生成结果和节点列表 |
+| V2Ray | `https://XXS-pickle.github.io/node_engine/v2ray.txt` | Base64 编码订阅，适用于 v2rayN、v2rayNG 等客户端 |
+| Clash / Mihomo | `https://XXS-pickle.github.io/node_engine/clash.yaml` | 完整 Clash/Mihomo 配置，包含自动延迟选择组 |
+| 原始节点 | `https://XXS-pickle.github.io/node_engine/v2ray-raw.txt` | 未进行 Base64 编码的节点链接 |
+| 测速报告 | `https://XXS-pickle.github.io/node_engine/report.json` | 节点来源、延迟、速度和错误信息 |
+| 状态页面 | `https://XXS-pickle.github.io/node_engine/` | 最近一次生成结果和节点列表 |
 
 首次使用前，需要在仓库 `Settings → Pages` 中将发布来源设置为 **GitHub Actions**。Pages 尚未启用时，上述链接会返回 404。
 
@@ -27,51 +27,48 @@
 - 从多个公开订阅、文本文件或网页抓取节点
 - 支持普通文本、Base64 订阅、HTML 中的节点链接和 Clash YAML
 - 支持 `VLESS`、`VMess`、`Trojan`、`Shadowsocks`、`Hysteria2` 和 `TUIC`
-- 根据协议参数进行规范化去重，而不是只比较节点名称
-- 在加载代理内核前并发检测去重后的入口 IP/域名与端口，快速剔除本地 TCP 不可达节点
-- 使用 Mihomo 测试代理连通性、延迟和限定大小的下载速度
-- 自动过滤不可用节点，并按速度和延迟排序
-- 通过代理出口 IP 识别国家，并将节点重命名为 `🇺🇸 美国 | VLESS | 001` 格式
-- 每天北京时间 08:30 和 17:00 自动更新，也支持在 Actions 页面手动运行
+- 按完整 Clash 连接配置去重，只忽略显示名称；密码、传输、TLS、Reality、插件和 `dialer-proxy` 不同的节点会保留
+- TCP 预筛默认关闭，每个去重候选节点都会进入 Mihomo 实测
+- 通过一个 Mihomo 实例和 External Controller 并发测试代理请求，目标为 `https://www.gstatic.com/generate_204`，超时 5000ms，并发 48
+- 单节点请求失败、TLS/握手失败或超时即删除；来源单独失败则跳过并继续抓取其他来源
+- 保留来源节点名称；最终存活节点统一追加 ` | tg@zzyyffxx`，重名会在后缀前编号
+- 每 3 小时自动运行一次，也支持在 Actions 页面手动运行
 - Windows x64 随项目提供便携 Python 3.12、Python 依赖和 Mihomo，首次运行无需另外下载运行环境
 - 生成 V2Ray、Clash/Mihomo、原始链接和 JSON 报告
 
 ### 客户端使用
 
+节点必须满足“至少一个来源抓取成功、至少解析出一个节点、至少一个节点通过 Mihomo、最终 YAML 校验通过”才会发布。单个来源失败会记录为统计并继续；全部来源失败、没有解析结果、没有存活节点或 YAML 校验失败时，本次 Actions 失败并保留上一版 Pages 订阅。流程只上传 Pages artifact，不创建 Git commit，因此不会产生无变化的提交。
+
+Actions 日志只保留来源/节点数量和运行时间统计，不输出来源 URL、UUID、密码、Token 或完整节点连接串。
+
 V2Ray 客户端导入：
 
 ```text
-https://735754647.github.io/Free-Nodes/v2ray.txt
+https://XXS-pickle.github.io/node_engine/v2ray.txt
 ```
 
 Clash/Mihomo 客户端导入：
 
 ```text
-https://735754647.github.io/Free-Nodes/clash.yaml
+https://XXS-pickle.github.io/node_engine/clash.yaml
 ```
 
 不同客户端对协议和传输方式的支持程度不同。如果某个节点在报告中可用，但客户端无法连接，请检查客户端内核版本以及对应协议支持情况。
 
 ### 添加节点来源
 
-公开来源写入 [`config/sources.txt`](config/sources.txt)，每行一个地址：
+公开成品来源写入 [`config/sources.txt`](config/sources.txt)，严格一行一个 URL。该文件包含 8 个指定项目的最终订阅，不递归抓取它们的上游。
 
-```text
-provider-name | https://example.com/public-subscription
-https://example.org/nodes.txt
-```
-
-带有订阅密钥或访问令牌的地址不要提交到公开仓库。请在仓库中创建 Actions Secret：
+私人订阅或带 Token 的 URL 不要写入该文件。将它们逐行放入仓库 Actions Secret `SOURCE_URLS`：
 
 ```text
 Settings → Secrets and variables → Actions → New repository secret
 Name: SOURCE_URLS
-Value: 每行一个订阅地址
+Value: 每行一个私人订阅 URL
 ```
 
-`SOURCE_URLS` 会和 `config/sources.txt` 中的公开来源一起处理。请注意：即使来源保存在 Secret 中，GitHub Pages 生成的节点订阅仍然是公开的。
-
-V2Nodes 使用公开主页作为来源。程序每次运行都会从 `https://www.v2nodes.com/` 自动提取当前官方订阅地址，因此网站轮换公开 Key 后不需要手动修改仓库配置。
+公开来源和 Secret 来源会一并抓取；即使输入 URL 保存在 Secret 中，生成的 GitHub Pages 节点订阅仍然公开。日志只显示来源数量和统计数据，不显示来源 URL、节点连接串或凭据。
 
 ### 测速设置
 
@@ -92,16 +89,15 @@ V2Nodes 使用公开主页作为来源。程序每次运行都会从 `https://ww
 | `ALIYUN_FC_INTERVAL_SECONDS` | `0.2` | 随机等待的中心值（配合抖动后为 0.1～0.3 秒） |
 | `ALIYUN_FC_JITTER_SECONDS` | `0.1` | 随机等待抖动范围；请求仍保持串行 |
 | `ALIYUN_FC_MAX_CONSECUTIVE_ERRORS` | `3` | 连续请求异常后停止远程检测并保留未检测节点 |
-| `MAX_LATENCY_MS` | `3000` | 最大允许延迟 |
-| `LATENCY_TIMEOUT_MS` | `8000` | 单个节点延迟测试超时 |
-| `LATENCY_TEST_ATTEMPTS` | `2` | 首次失败时再测试一次，降低瞬时网络抖动导致的误删 |
+| `MAX_LATENCY_MS` | `5000` | 最大允许延迟，与 Mihomo 测试超时一致 |
+| `LATENCY_TIMEOUT_MS` | `5000` | 单节点 Mihomo 代理请求超时 |
+| `LATENCY_TEST_ATTEMPTS` | `1` | 每个节点只测一次；5 秒内失败即剔除 |
 | `SOURCE_TIMEOUT_SECONDS` | `60` | 单个来源的连接/读取超时 |
 | `SOURCE_RETRIES` | `3` | 来源临时连接失败时的额外重试次数 |
 | `SOURCE_RETRY_BACKOFF_SECONDS` | `2` | 来源重试之间的递增等待秒数 |
 | `FETCH_WORKERS` | `4` | 并发抓取来源数量，降低同一出口拥塞 |
-| `MIN_SPEED_MBPS` | `0.1` | 最低下载速度；低于 `0.1 Mbps` 或未完成下载测速的节点不会发布 |
-| `GEOIP_TEST_URLS` | Cloudflare trace + country.is | 依次通过节点查询实际出口 IP 和国家代码 |
-| `GEOIP_WORKERS` | `64` | 并发查询真实出口国家数量；每个节点使用独立本地 Mihomo 入口 |
+| `MIN_SPEED_MBPS` | `0.1` | 仅在显式启用下载测速时使用；当前 Actions 默认关闭下载测速 |
+| `GEOIP_TEST_URLS` | Cloudflare trace + country.is | 仅启用下载测速时用于记录出口 IP/国家信息 |
 | `SPEED_TEST_ENABLED` | `0` | `0` 关闭下载测速；改成 `1` 可恢复测速和最低速度过滤 |
 | `SPEED_TEST_LIMIT` | `0` | `0` 表示对全部延迟测试通过的节点执行下载测速 |
 | `SPEED_TEST_BYTES` | `1000000` | 启用测速后每个节点下载约 1 MB，用于筛选而非精确带宽评测 |
@@ -128,11 +124,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test_local.ps1 -EnableSpeedTest
 
 本地结果写入 `public-local/`，其延迟和速度更接近当前电脑运行 v2rayN 时的实际线路。便携运行时不需要联网安装 Python 包，但订阅抓取和节点检测仍然必须联网。
 
-生成文件位于 `public/`。只想检查解析和订阅生成时，可以使用：
-
-```powershell
-python -m subbench run --skip-benchmark
-```
+生成文件位于 `public/`。每次发布构建都必须运行 Mihomo；跳过实测会被拒绝。没有活节点或最终 Clash 配置校验失败时，不会替换上次成功的订阅。
 
 ### 项目说明
 
@@ -150,7 +142,7 @@ python -m subbench run --skip-benchmark
 
 ## English
 
-Free Nodes is a GitHub Actions project that collects public proxy links, parses and deduplicates them, benchmarks connectivity and download speed with Mihomo, and publishes V2Ray and Clash/Mihomo subscriptions through GitHub Pages.
+This repository is a small adaptation of 735754647/Free-Nodes. It reuses the upstream multi-source collector, protocol parsers, complete connection-configuration deduplication, Mihomo External Controller checks, and GitHub Pages publishing. Every three hours, Actions fetches the final feeds in `config/sources.txt`, tests each node through Mihomo against `https://www.gstatic.com/generate_204` with 48 workers and a 5000 ms per-node timeout, drops failures, and appends ` | tg@zzyyffxx` to surviving names.
 
 > Public free nodes can disappear, slow down, or change without notice. Do not use them for sensitive traffic, and do not treat a successful CI test as a long-term availability guarantee.
 
@@ -158,11 +150,11 @@ Free Nodes is a GitHub Actions project that collects public proxy links, parses 
 
 | Format | URL | Description |
 | --- | --- | --- |
-| V2Ray | `https://735754647.github.io/Free-Nodes/v2ray.txt` | Base64 subscription for clients such as v2rayN and v2rayNG |
-| Clash / Mihomo | `https://735754647.github.io/Free-Nodes/clash.yaml` | Complete configuration with an automatic latency group |
-| Raw links | `https://735754647.github.io/Free-Nodes/v2ray-raw.txt` | Extracted node links without Base64 encoding |
-| Benchmark report | `https://735754647.github.io/Free-Nodes/report.json` | Source, latency, speed, and error details |
-| Status page | `https://735754647.github.io/Free-Nodes/` | Latest generated results and node table |
+| V2Ray | `https://XXS-pickle.github.io/node_engine/v2ray.txt` | Base64 subscription for clients such as v2rayN and v2rayNG |
+| Clash / Mihomo | `https://XXS-pickle.github.io/node_engine/clash.yaml` | Complete configuration with an automatic latency group |
+| Raw links | `https://XXS-pickle.github.io/node_engine/v2ray-raw.txt` | Extracted node links without Base64 encoding |
+| Benchmark report | `https://XXS-pickle.github.io/node_engine/report.json` | Source, latency, speed, and error details |
+| Status page | `https://XXS-pickle.github.io/node_engine/` | Latest generated results and node table |
 
 Before the first deployment, open `Settings → Pages` and select **GitHub Actions** as the publishing source. The URLs return 404 until Pages is enabled.
 
@@ -171,38 +163,35 @@ Before the first deployment, open `Settings → Pages` and select **GitHub Actio
 - Fetches multiple public subscriptions, text files, and webpages
 - Accepts plain URI lists, Base64 subscriptions, HTML links, and Clash YAML
 - Supports `VLESS`, `VMess`, `Trojan`, `Shadowsocks`, `Hysteria2`, and `TUIC`
-- Deduplicates nodes by normalized connection parameters
-- Concurrently checks unique entry hosts and ports before loading Mihomo
-- Uses Mihomo for real proxy connectivity, latency, and bounded download tests
-- Filters failed nodes and sorts successful results by speed and latency
-- Detects the proxy exit country and renames nodes like `🇺🇸 美国 | VLESS | 001`
-- Runs daily at 08:30 and 17:00 Asia/Shanghai and supports manual workflow dispatch
+- Deduplicates complete Clash connection maps, ignoring only the display name; credentials, transport, TLS, Reality, plugin, and `dialer-proxy` differences remain distinct
+- Keeps the TCP prefilter disabled by default so every deduplicated candidate reaches Mihomo
+- Reuses one Mihomo instance and External Controller to test proxy requests against `https://www.gstatic.com/generate_204`, with 48 workers and a 5000 ms timeout
+- Removes any node that fails the real Mihomo request; a single failed source is skipped while other sources continue
+- Preserves source node names and appends ` | tg@zzyyffxx` to every surviving node name, numbering collisions before the suffix
+- Runs every three hours and supports manual workflow dispatch
 - Bundles portable Python 3.12, Python dependencies, and Mihomo for Windows x64 startup without initial runtime downloads
 - Publishes V2Ray, Clash/Mihomo, raw-link, and JSON report outputs
 
 ### Usage
 
+A publish requires at least one fetched source, at least one parsed node, at least one node that passes Mihomo, and a valid final YAML. Individual source failures are counted and skipped. If every source fails, parsing yields no nodes, Mihomo finds no live nodes, or final YAML validation fails, the run fails and the previous Pages subscription remains. Workflows deploy Pages artifacts without creating Git commits.
+
+Action logs contain only source/node counts and runtime statistics; they do not print source URLs, UUIDs, passwords, tokens, or full connection strings.
+
 Import one of these URLs into a compatible client:
 
 ```text
-V2Ray: https://735754647.github.io/Free-Nodes/v2ray.txt
-Clash: https://735754647.github.io/Free-Nodes/clash.yaml
+V2Ray: https://XXS-pickle.github.io/node_engine/v2ray.txt
+Clash: https://XXS-pickle.github.io/node_engine/clash.yaml
 ```
 
 Protocol and transport support varies between clients. A node that passes the CI benchmark can still fail on an older or incompatible client core.
 
 ### Adding Sources
 
-Add public URLs to [`config/sources.txt`](config/sources.txt), one per line:
+Add public final-feed URLs to [`config/sources.txt`](config/sources.txt), one URL per line. It contains one finished aggregate feed for each of the eight requested projects; upstream sources are not recursively crawled.
 
-```text
-provider-name | https://example.com/public-subscription
-https://example.org/nodes.txt
-```
-
-Store tokenized or private source URLs in the `SOURCE_URLS` GitHub Actions secret as newline-separated values. Do not commit subscription tokens to a public repository. Remember that the generated GitHub Pages subscriptions remain public even when the input URL is stored as a secret.
-
-V2Nodes is configured using its public landing page. The builder reads that page on every run and follows the current official subscription URL automatically, so its rotating public key does not need to be copied into the repository.
+Keep private or tokenized source URLs out of this public file. Add them as newline-separated values in the repository Actions secret named `SOURCE_URLS`. Public and secret feeds are processed together. The published Pages subscription is public even when an input URL is secret. Logs contain only aggregate counts and runtime, never source URLs or node credentials.
 
 ### Benchmark Configuration
 
@@ -223,16 +212,15 @@ The main limits are configured in [`.github/workflows/build.yml`](.github/workfl
 | `ALIYUN_FC_INTERVAL_SECONDS` | `0.2` | Center value for randomized delay (0.1–0.3 seconds with jitter) |
 | `ALIYUN_FC_JITTER_SECONDS` | `0.1` | Randomized delay range; requests remain serial |
 | `ALIYUN_FC_MAX_CONSECUTIVE_ERRORS` | `3` | Stops remote checks after consecutive request errors and preserves untested nodes |
-| `MAX_LATENCY_MS` | `3000` | Maximum accepted latency |
-| `LATENCY_TIMEOUT_MS` | `8000` | Per-node latency test timeout |
-| `LATENCY_TEST_ATTEMPTS` | `2` | Retries the latency check once after an initial failure to reduce transient false negatives |
+| `MAX_LATENCY_MS` | `5000` | Maximum accepted latency, matching the Mihomo timeout |
+| `LATENCY_TIMEOUT_MS` | `5000` | Per-node Mihomo proxy-request timeout |
+| `LATENCY_TEST_ATTEMPTS` | `1` | One check per node; failures within the five-second window are removed |
 | `SOURCE_TIMEOUT_SECONDS` | `60` | Per-source connection/read timeout |
 | `SOURCE_RETRIES` | `3` | Extra retries for transient source failures |
 | `SOURCE_RETRY_BACKOFF_SECONDS` | `2` | Increasing delay between source retries |
 | `FETCH_WORKERS` | `4` | Concurrent source downloads to reduce congestion on one egress |
-| `MIN_SPEED_MBPS` | `0.1` | Minimum download speed; nodes below `0.1 Mbps` or without a completed speed test are rejected |
-| `GEOIP_TEST_URLS` | Cloudflare trace + country.is | Looks up the actual exit IP and country code with fallback |
-| `GEOIP_WORKERS` | `64` | Concurrent exit-country lookups; each node uses a dedicated local Mihomo listener |
+| `MIN_SPEED_MBPS` | `0.1` | Used only when download testing is explicitly enabled; Actions currently leave it disabled |
+| `GEOIP_TEST_URLS` | Cloudflare trace + country.is | Used for exit-IP/country metadata only when download testing is enabled |
 | `SPEED_TEST_ENABLED` | `0` | `0` disables download tests; set to `1` to restore speed filtering |
 | `SPEED_TEST_LIMIT` | `0` | `0` tests every node that passes the latency check |
 | `SPEED_TEST_BYTES` | `1000000` | Downloads about 1 MB per node when enabled, for screening rather than precise bandwidth benchmarking |
@@ -253,7 +241,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test_local.ps1
 
 Local results are written to `public-local/`. The bundled runtime avoids initial Python-package and Mihomo downloads, while subscription fetching and node tests still require Internet access.
 
-Generated subscriptions are written to `public/`. Use `python -m subbench run --skip-benchmark` when you only need to verify parsing and output generation.
+Generated subscriptions are staged before publication. `--skip-benchmark` is rejected; a run must parse nodes, pass at least one through Mihomo, and validate the final Clash file before replacing the previous output.
 
 ### Disclaimer
 

@@ -62,8 +62,28 @@ class SourceTests(unittest.TestCase):
             )
 
         self.assertIsNone(results[0].text)
-        self.assertIn("did not contain a subscription link", results[0].error or "")
+        self.assertEqual(results[0].error, "ValueError")
+        self.assertNotIn("https://", results[0].error or "")
         self.assertEqual(requester.call_count, 1)
+
+    def test_http_errors_do_not_retain_request_url_or_token(self):
+        response = requests.Response()
+        response.status_code = 403
+        error = requests.HTTPError(
+            "403 Client Error: Forbidden for url: https://example.com/source?token=fixture-token",
+            response=response,
+        )
+        with patch("subbench.sources.requests.get", side_effect=error):
+            results = fetch_sources(
+                [SourceSpec(name="source-01", url="https://example.com/source?token=fixture-token")],
+                workers=1,
+                retries=0,
+            )
+
+        self.assertIsNone(results[0].text)
+        self.assertEqual(results[0].error, "HTTP 403")
+        self.assertNotIn("fixture-token", results[0].error or "")
+        self.assertNotIn("example.com", results[0].error or "")
 
     def test_retries_transient_source_failures(self):
         responses = [requests.Timeout("temporary timeout"), DummyResponse("vless://example")]

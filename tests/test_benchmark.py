@@ -7,7 +7,7 @@ import requests
 import yaml
 
 from subbench.benchmark import MihomoBenchmark, _parse_geo_payload, write_mihomo_config
-from subbench.cli import _filter_benchmarked_nodes, _rename_nodes_by_country
+from subbench.cli import _filter_benchmarked_nodes
 from subbench.models import Node
 
 
@@ -73,16 +73,16 @@ class BenchmarkTests(unittest.TestCase):
         )
         self.assertEqual([node.name for node in filtered], ["latency-only"])
 
-    def test_speed_disabled_uses_location_checks_only(self):
-        nodes = [make_node("one", 100), make_node("two", 200)]
+    def test_speed_disabled_skips_location_checks(self):
+        nodes = [make_node("source name one", 100), make_node("source name two", 200)]
         benchmark = MihomoBenchmark(
             binary=Path("mihomo"),
             workdir=Path(".work-test"),
             nodes=nodes,
-            latency_url="https://www.google.com/generate_204",
+            latency_url="https://www.gstatic.com/generate_204",
             speed_url="https://example.com/test.bin",
             geo_url="https://www.cloudflare.com/cdn-cgi/trace",
-            timeout_ms=8000,
+            timeout_ms=5000,
             speed_bytes=1000,
             speed_limit=0,
             speed_timeout_seconds=8,
@@ -90,26 +90,10 @@ class BenchmarkTests(unittest.TestCase):
             speed_enabled=False,
         )
         benchmark.benchmark_latency = lambda candidates: candidates
-        located: list[str] = []
-        benchmark.locate = lambda node: located.append(node.name) or node
+        benchmark.geolocate = lambda node, proxy_port=None: self.fail("location lookup must stay disabled")
         benchmark.speed = lambda node: self.fail("speed test must stay disabled")
-        benchmark.benchmark(nodes)
-        self.assertEqual(located, ["one", "two"])
-
-    def test_nodes_are_renamed_with_exit_country_and_protocol(self):
-        first = make_node("upstream one", 100, 5.0)
-        second = make_node("upstream two", 120, 4.0)
-        first.metadata["country_code"] = "US"
-        second.metadata["country_code"] = "US"
-        _rename_nodes_by_country([first, second])
-        self.assertEqual(first.name, "🇺🇸 美国 | VLESS | 001")
-        self.assertEqual(second.name, "🇺🇸 美国 | VLESS | 002")
-
-    def test_less_common_country_uses_chinese_name(self):
-        node = make_node("upstream", 100, 5.0)
-        node.metadata["country_code"] = "BA"
-        _rename_nodes_by_country([node])
-        self.assertEqual(node.name, "🇧🇦 波黑 | VLESS | 001")
+        tested = benchmark.benchmark(nodes)
+        self.assertEqual([node.name for node in tested], ["source name one", "source name two"])
 
     def test_cloudflare_trace_geo_payload(self):
         country, exit_ip = _parse_geo_payload("ip=203.0.113.10\nloc=JP\ncolo=NRT\n")

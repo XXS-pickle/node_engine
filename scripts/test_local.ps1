@@ -1,6 +1,6 @@
 param(
     [int]$MaxNodes = 0,
-    [int]$MaxLatencyMs = 3000,
+    [int]$MaxLatencyMs = 5000,
     [double]$MinSpeedMbps = 0.1,
     [int]$SpeedTestBytes = 1000000,
     [int]$LatencyWorkers = 48,
@@ -91,16 +91,15 @@ try {
     $env:TCP_CONNECT_ATTEMPTS = "2"
     $env:TCP_PREFILTER_WORKERS = "128"
     $env:MAX_LATENCY_MS = "$MaxLatencyMs"
-    $env:LATENCY_TIMEOUT_MS = "8000"
-    $env:LATENCY_TEST_ATTEMPTS = "2"
+    $env:LATENCY_TEST_URL = "https://www.gstatic.com/generate_204"
+    $env:LATENCY_TIMEOUT_MS = "5000"
+    $env:LATENCY_TEST_ATTEMPTS = "1"
     $env:MIN_SPEED_MBPS = "$MinSpeedMbps"
-    $env:GEOIP_WORKERS = "$LatencyWorkers"
     $env:SPEED_TEST_ENABLED = if ($EnableSpeedTest) { "1" } else { "0" }
     $env:SPEED_TEST_LIMIT = "0"
     $env:SPEED_TEST_BYTES = "$SpeedTestBytes"
     $env:SPEED_TIMEOUT_SECONDS = "8"
     $env:BENCHMARK_WORKERS = "$LatencyWorkers"
-    $env:LATENCY_TEST_URL = "https://www.google.com/generate_204"
     $env:GEOIP_TEST_URLS = "https://www.cloudflare.com/cdn-cgi/trace,https://api.country.is/"
 
     & $PythonExe -m subbench run --mihomo $Mihomo --output $Output --workdir $WorkDir

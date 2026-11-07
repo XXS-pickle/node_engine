@@ -58,14 +58,13 @@ def load_sources(path: Path) -> list[SourceSpec]:
         if not value or value.startswith("#"):
             continue
         if "|" in value:
-            label, url = (item.strip() for item in value.split("|", 1))
+            _, url = (item.strip() for item in value.split("|", 1))
         else:
             url = value
-            label = url
         if not url.startswith(("https://", "http://")) or url in seen:
             continue
         seen.add(url)
-        specs.append(SourceSpec(name=label or url, url=url))
+        specs.append(SourceSpec(name=f"source-{len(specs) + 1:02d}", url=url))
     return specs
 
 
@@ -110,11 +109,6 @@ def fetch_sources(
                 if attempt >= max_attempts or not retryable_status:
                     raise
                 delay = max(0.0, retry_backoff_seconds) * attempt
-                print(
-                    f"Source fetch attempt {attempt}/{max_attempts} failed with "
-                    f"{type(exc).__name__}; retrying in {delay:.1f}s.",
-                    flush=True,
-                )
                 if delay:
                     time.sleep(delay)
             finally:
@@ -129,14 +123,19 @@ def fetch_sources(
             url = spec.url
             if _is_v2nodes_landing_page(url):
                 url = _extract_v2nodes_subscription_url(download(url))
-                print(f"Resolved the current V2Nodes subscription for {spec.name}.", flush=True)
             return SourceResult(source=spec, text=download(url))
         except (requests.RequestException, ValueError) as exc:
-            return SourceResult(source=spec, error=str(exc))
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            error = f"HTTP {status_code}" if status_code else type(exc).__name__
+            return SourceResult(source=spec, error=error)
 
     results: list[SourceResult] = []
     with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
         futures = {executor.submit(fetch, spec): spec for spec in specs}
         for future in as_completed(futures):
-            results.append(future.result())
+            spec = futures[future]
+            try:
+                results.append(future.result())
+            except Exception as exc:
+                results.append(SourceResult(source=spec, error=type(exc).__name__))
     return sorted(results, key=lambda item: item.source.name)

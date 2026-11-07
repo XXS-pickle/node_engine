@@ -44,7 +44,6 @@ class MihomoBenchmark:
         speed_timeout_seconds: int,
         workers: int,
         speed_enabled: bool = True,
-        geo_workers: int | None = None,
         latency_attempts: int = 2,
     ) -> None:
         self.binary = binary
@@ -58,7 +57,6 @@ class MihomoBenchmark:
         self.speed_limit = speed_limit
         self.speed_timeout_seconds = max(1, speed_timeout_seconds)
         self.workers = max(1, workers)
-        self.geo_workers = max(1, geo_workers or workers)
         self.latency_attempts = max(1, latency_attempts)
         self.speed_enabled = speed_enabled
         self.controller = "http://127.0.0.1:9090"
@@ -83,12 +81,10 @@ class MihomoBenchmark:
             + config_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-        log_path = self.workdir / "mihomo.log"
-        self.log_handle = log_path.open("w", encoding="utf-8")
         self.process = subprocess.Popen(
             [str(self.binary), "-d", str(self.workdir), "-f", str(config_path)],
-            stdout=self.log_handle,
-            stderr=subprocess.STDOUT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             text=True,
         )
         deadline = time.monotonic() + 60
@@ -99,7 +95,7 @@ class MihomoBenchmark:
                     return self
             except requests.RequestException:
                 time.sleep(0.25)
-        log_tail = log_path.read_text(encoding="utf-8", errors="replace")[-4000:]
+
         if self.process and self.process.poll() is None:
             self.process.terminate()
             try:
@@ -108,7 +104,7 @@ class MihomoBenchmark:
                 self.process.kill()
         if self.log_handle:
             self.log_handle.close()
-        raise RuntimeError(f"Mihomo did not start within 60 seconds. Log tail:\n{log_tail}")
+        raise RuntimeError("Mihomo did not start within 60 seconds.")
 
     def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         if self.process and self.process.poll() is None:
@@ -134,7 +130,7 @@ class MihomoBenchmark:
                         "timeout": str(self.timeout_ms),
                         "expected": "204",
                     },
-                    timeout=max(5, self.timeout_ms / 1000 + 5),
+                    timeout=max(2, self.timeout_ms / 1000 + 2),
                 )
                 response.raise_for_status()
                 node.latency_ms = int(response.json()["delay"])
@@ -149,12 +145,8 @@ class MihomoBenchmark:
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
             futures = [executor.submit(self.latency, node) for node in nodes]
             measured: list[Node] = []
-            total = len(futures)
-            for index, future in enumerate(as_completed(futures), start=1):
+            for future in as_completed(futures):
                 measured.append(future.result())
-                if index % 100 == 0 or index == total:
-                    usable = sum(node.latency_ms is not None for node in measured)
-                    print(f"Latency test {index}/{total}: {usable} reachable", flush=True)
             return measured
 
     def _proxies_for_port(self, port: int) -> dict[str, str]:
@@ -189,16 +181,6 @@ class MihomoBenchmark:
         )
         selected.raise_for_status()
 
-    def locate(self, node: Node) -> Node:
-        try:
-            proxy_port = self.node_proxy_ports.get(node.name)
-            if proxy_port is None:
-                self.select(node)
-            self.geolocate(node, proxy_port)
-        except requests.RequestException as exc:
-            node.metadata["geo_error"] = str(exc)
-        return node
-
     def speed(self, node: Node) -> Node:
         try:
             self.select(node)
@@ -228,23 +210,11 @@ class MihomoBenchmark:
         valid = [node for node in measured if node.latency_ms is not None]
         valid.sort(key=lambda node: (node.latency_ms or 10**9, node.name))
         if not self.speed_enabled:
-            total = len(valid)
-            with ThreadPoolExecutor(max_workers=self.geo_workers) as executor:
-                futures = [executor.submit(self.locate, node) for node in valid]
-                located_nodes: list[Node] = []
-                for index, future in enumerate(as_completed(futures), start=1):
-                    located_nodes.append(future.result())
-                    if index % 50 == 0 or index == total:
-                        located = sum(bool(item.metadata.get("country_code")) for item in located_nodes)
-                        print(f"Location test {index}/{total}: {located} countries detected", flush=True)
             return valid
 
         speed_candidates = valid if self.speed_limit <= 0 else valid[: self.speed_limit]
-        total = len(speed_candidates)
-        for index, node in enumerate(speed_candidates, start=1):
+        for node in speed_candidates:
             self.speed(node)
-            result = f"{node.speed_mbps} Mbps" if node.speed_mbps is not None else node.error or "failed"
-            print(f"Speed test {index}/{total}: {node.name} - {result}", flush=True)
         return valid
 
 
@@ -313,3 +283,19 @@ def write_mihomo_config(
         yaml.dump(document, Dumper=MihomoSafeDumper, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def validate_clash_config(binary: Path, config_path: Path, workdir: Path) -> None:
+    workdir.mkdir(parents=True, exist_ok=True)
+    try:
+        result = subprocess.run(
+            [str(binary), "-t", "-d", str(workdir), "-f", str(config_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeError("Mihomo final configuration validation failed.") from None
+    if result.returncode != 0:
+        raise RuntimeError("Mihomo rejected the final Clash configuration.")
