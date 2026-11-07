@@ -236,6 +236,16 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
+      - name: Restore source quality state
+        id: restore_quality_state
+        uses: actions/cache/restore@v5
+        with:
+          path: .work/source-quality.json
+          enableCrossOsArchive: true
+          key: source-quality-${{ github.repository }}-${{ github.run_id }}
+          restore-keys: |
+            source-quality-${{ github.repository }}-
+
       - name: Build subscriptions
         id: build_subscriptions
         env:
@@ -248,10 +258,12 @@ jobs:
           FETCH_WORKERS: "4"
           ALIYUN_FC_ENABLED: "0"
           MAX_NODES: "0"
-          MAX_OUTPUT_NODES: "0"
-          TCP_PREFILTER_ENABLED: "0"
-          TCP_CONNECT_TIMEOUT_SECONDS: "3"
-          TCP_CONNECT_ATTEMPTS: "2"
+          MAX_OUTPUT_NODES: "300"
+          MAX_MIHOMO_CANDIDATES: "3000"
+          SOURCE_QUALITY_STATE: ".work/source-quality.json"
+          TCP_PREFILTER_ENABLED: "1"
+          TCP_CONNECT_TIMEOUT_SECONDS: "2"
+          TCP_CONNECT_ATTEMPTS: "1"
           TCP_PREFILTER_WORKERS: "128"
           ALIYUN_FC_TIMEOUT_SECONDS: "10"
           # Limit Alibaba FC checks to ten concurrent requests.
@@ -271,10 +283,18 @@ jobs:
           SPEED_TEST_LIMIT: "0"
           SPEED_TEST_BYTES: "1000000"
           SPEED_TIMEOUT_SECONDS: "8"
-          BENCHMARK_WORKERS: "48"
+          BENCHMARK_WORKERS: "32"
         run: |
           & $env:PYTHON_EXE -m subbench run --mihomo .bin/mihomo.exe --output public --workdir .work
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Save source quality state
+        if: always() && hashFiles('.work/source-quality.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: .work/source-quality.json
+          enableCrossOsArchive: true
+          key: source-quality-${{ github.repository }}-${{ github.run_id }}
 
       - name: Upload subscription output (attempt 1)
         id: upload_subscription_1

@@ -153,5 +153,17 @@ class TcpPrefilterTests(unittest.TestCase):
         self.assertEqual(calls, 3)
 
 
+    def test_tcp_prefilter_uses_requested_two_second_timeout(self):
+        node = make_node("one", "reachable.example", 443)
+        observed: list[float] = []
+
+        def connector(endpoint: tuple[str, int], timeout: float):
+            observed.append(timeout)
+            return DummyConnection()
+
+        tcp_prefilter([node], timeout_seconds=2.0, workers=1, attempts=1, connector=connector)
+        self.assertEqual(observed, [2.0])
+
+
 if __name__ == "__main__":
     unittest.main()

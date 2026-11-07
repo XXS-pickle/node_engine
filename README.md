@@ -6,7 +6,7 @@
 
 ## 简体中文
 
-本项目基于 735754647/Free-Nodes，复用其多来源采集、协议解析、完整连接参数去重、Mihomo External Controller 测活和 GitHub Pages 发布。Actions 每 3 小时抓取 `config/sources.txt` 中的成品订阅，使用 48 并发通过 Mihomo 访问 `https://www.gstatic.com/generate_204`，每节点超时 5000ms；只保留通过节点，名称统一添加 ` | tg@zzyyffxx`。
+本项目基于 735754647/Free-Nodes，复用其多来源采集、协议解析、完整连接参数去重、Mihomo External Controller 测活和 GitHub Pages 发布。Actions 每 3 小时抓取 `config/sources.txt` 中的成品订阅，先用 2000ms TCP 预筛，再按来源公平分配最多 3000 个候选，以 32 并发通过 Mihomo 访问 `https://www.gstatic.com/generate_204`，每节点超时 5000ms；只保留通过节点，名称统一添加 ` | tg@zzyyffxx`。
 
 > 免费节点来自公开网络，可能随时失效、限速或被修改。请勿用于传输敏感信息，也不要将测速结果视为长期可用保证。
 
@@ -28,8 +28,10 @@
 - 支持普通文本、Base64 订阅、HTML 中的节点链接和 Clash YAML
 - 支持 `VLESS`、`VMess`、`Trojan`、`Shadowsocks`、`Hysteria2` 和 `TUIC`
 - 按完整 Clash 连接配置去重，只忽略显示名称；密码、传输、TLS、Reality、插件和 `dialer-proxy` 不同的节点会保留
-- TCP 预筛默认关闭，每个去重候选节点都会进入 Mihomo 实测
-- 通过一个 Mihomo 实例和 External Controller 并发测试代理请求，目标为 `https://www.gstatic.com/generate_204`，超时 5000ms，并发 48
+- 去重后先以 2000ms TCP 连接超时做预筛；仅 TCP 可达节点进入 Mihomo
+- 按来源公平分配 Mihomo 名额，最多测试 3000 个候选，使用一个 Mihomo 实例、External Controller 和 32 并发
+- 目标为 `https://www.gstatic.com/generate_204`，Mihomo 超时 5000ms，最终最多发布 300 个实测通过节点
+- 报告记录每个来源的 fetched、parsed、deduped、tcp_alive、mihomo_tested、mihomo_alive；连续三次高量低转化来源会降权
 - 单节点请求失败、TLS/握手失败或超时即删除；来源单独失败则跳过并继续抓取其他来源
 - 保留来源节点名称；最终存活节点统一追加 ` | tg@zzyyffxx`，重名会在后缀前编号
 - 每 3 小时自动运行一次，也支持在 Actions 页面手动运行
@@ -78,9 +80,11 @@ Value: 每行一个私人订阅 URL
 | --- | ---: | --- |
 | `MAX_NODES` | `0` | `0` 表示对全部去重后的候选节点进行测试 |
 | `MAX_OUTPUT_NODES` | `0` | `0` 表示发布全部通过测试的可用节点 |
-| `TCP_PREFILTER_ENABLED` | `0` | 默认关闭入口 TCP 预筛，确保每个去重节点都进入延迟测试；设为 `1` 会先淘汰 TCP 不通节点 |
-| `TCP_CONNECT_TIMEOUT_SECONDS` | `3` | 单个入口端口连接超时 |
-| `TCP_CONNECT_ATTEMPTS` | `2` | TCP 首次失败时再尝试一次；首次成功不会重复连接 |
+| `TCP_PREFILTER_ENABLED` | `1` | 先做入口 TCP 预筛 |
+| `TCP_CONNECT_TIMEOUT_SECONDS` | `2` | 单个入口端口连接超时 |
+| `TCP_CONNECT_ATTEMPTS` | `1` | TCP 预筛尝试次数 |
+| `MAX_MIHOMO_CANDIDATES` | `3000` | TCP 通过后按来源公平分配的 Mihomo 候选上限 |
+| `MAX_OUTPUT_NODES` | `300` | 最终实测通过节点发布上限 |
 | `TCP_PREFILTER_WORKERS` | `128` | 并发入口端口检测数量 |
 | `ALIYUN_FC_URL` | Secret，可选 | 使用阿里云函数从杭州逐个复核入口端口；未配置时自动跳过 |
 | `ALIYUN_FC_ENABLED` | `0` | 阿里云复核总开关；设置为 `1` 时启用 |
@@ -142,7 +146,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test_local.ps1 -EnableSpeedTest
 
 ## English
 
-This repository is a small adaptation of 735754647/Free-Nodes. It reuses the upstream multi-source collector, protocol parsers, complete connection-configuration deduplication, Mihomo External Controller checks, and GitHub Pages publishing. Every three hours, Actions fetches the final feeds in `config/sources.txt`, tests each node through Mihomo against `https://www.gstatic.com/generate_204` with 48 workers and a 5000 ms per-node timeout, drops failures, and appends ` | tg@zzyyffxx` to surviving names.
+This repository is a small adaptation of 735754647/Free-Nodes. It reuses the upstream multi-source collector, protocol parsers, complete connection-configuration deduplication, Mihomo External Controller checks, and GitHub Pages publishing. Every three hours, Actions fetches the final feeds in `config/sources.txt`, tests each node through Mihomo against `https://www.gstatic.com/generate_204` with a 2000 ms TCP prefilter, fair per-source allocation capped at 3000 candidates, 32 Mihomo workers, and a 5000 ms per-node timeout, drops failures, and appends ` | tg@zzyyffxx` to surviving names.
 
 > Public free nodes can disappear, slow down, or change without notice. Do not use them for sensitive traffic, and do not treat a successful CI test as a long-term availability guarantee.
 
@@ -164,8 +168,9 @@ Before the first deployment, open `Settings → Pages` and select **GitHub Actio
 - Accepts plain URI lists, Base64 subscriptions, HTML links, and Clash YAML
 - Supports `VLESS`, `VMess`, `Trojan`, `Shadowsocks`, `Hysteria2`, and `TUIC`
 - Deduplicates complete Clash connection maps, ignoring only the display name; credentials, transport, TLS, Reality, plugin, and `dialer-proxy` differences remain distinct
-- Keeps the TCP prefilter disabled by default so every deduplicated candidate reaches Mihomo
-- Reuses one Mihomo instance and External Controller to test proxy requests against `https://www.gstatic.com/generate_204`, with 48 workers and a 5000 ms timeout
+- Applies a 2000 ms TCP prefilter before Mihomo and allocates at most 3000 candidates fairly across sources
+- Reuses one Mihomo instance and External Controller to test proxy requests against `https://www.gstatic.com/generate_204`, with 32 workers and a 5000 ms timeout
+- Publishes at most 300 nodes that pass Mihomo; source quality counters are persisted between runs and low-yield sources are demoted after three runs
 - Removes any node that fails the real Mihomo request; a single failed source is skipped while other sources continue
 - Preserves source node names and appends ` | tg@zzyyffxx` to every surviving node name, numbering collisions before the suffix
 - Runs every three hours and supports manual workflow dispatch
@@ -199,11 +204,12 @@ The main limits are configured in [`.github/workflows/build.yml`](.github/workfl
 
 | Variable | Default | Purpose |
 | --- | ---: | --- |
-| `MAX_NODES` | `0` | `0` tests every deduplicated candidate |
-| `MAX_OUTPUT_NODES` | `0` | `0` publishes every node that passes testing |
-| `TCP_PREFILTER_ENABLED` | `0` | Disabled by default so every deduplicated node reaches latency testing; set to `1` to reject failed TCP endpoints first |
-| `TCP_CONNECT_TIMEOUT_SECONDS` | `3` | Per-entry TCP connection timeout |
-| `TCP_CONNECT_ATTEMPTS` | `2` | Retries TCP once after an initial failure; successful connections are not repeated |
+| `MAX_NODES` | `0` | No global prefix truncation before TCP screening |
+| `MAX_OUTPUT_NODES` | `300` | Maximum published Mihomo-alive nodes |
+| `MAX_MIHOMO_CANDIDATES` | `3000` | Fair per-source cap after TCP prefilter |
+| `TCP_PREFILTER_ENABLED` | `1` | Run the TCP prefilter before Mihomo |
+| `TCP_CONNECT_TIMEOUT_SECONDS` | `2` | Per-entry TCP connection timeout |
+| `TCP_CONNECT_ATTEMPTS` | `1` | TCP prefilter attempts |
 | `TCP_PREFILTER_WORKERS` | `128` | Concurrent entry-port checks |
 | `ALIYUN_FC_URL` | Optional secret | Rechecks entry ports sequentially from Alibaba Cloud Hangzhou; skipped when unset |
 | `ALIYUN_FC_ENABLED` | `0` | Master switch for Alibaba Cloud rechecks; set to `1` to enable |
@@ -225,7 +231,7 @@ The main limits are configured in [`.github/workflows/build.yml`](.github/workfl
 | `SPEED_TEST_LIMIT` | `0` | `0` tests every node that passes the latency check |
 | `SPEED_TEST_BYTES` | `1000000` | Downloads about 1 MB per node when enabled, for screening rather than precise bandwidth benchmarking |
 | `SPEED_TIMEOUT_SECONDS` | `8` | Per-node download read timeout |
-| `BENCHMARK_WORKERS` | `48` | Concurrent latency checks |
+| `BENCHMARK_WORKERS` | `32` | Concurrent Mihomo latency checks |
 
 The dispatcher checks the Windows/X64 self-hosted runner with the `RUNNER_STATUS_TOKEN`. It immediately selects the local runner only when it is explicitly online and idle; an offline or busy runner, a missing or unauthorized token, an API timeout, or an invalid response immediately selects the GitHub-hosted runner. A failed local run triggers the cloud fallback through a completion event, while the ten-minute monitor remains only as a safety net for rare disconnects after routing. Results reflect the network of whichever runner performed the checks.
 

@@ -7,7 +7,7 @@ import requests
 import yaml
 
 from subbench.benchmark import MihomoBenchmark, _parse_geo_payload, write_mihomo_config
-from subbench.cli import _filter_benchmarked_nodes
+from subbench.cli import _fair_candidate_selection, _filter_benchmarked_nodes
 from subbench.models import Node
 
 
@@ -25,6 +25,40 @@ def make_node(name: str, latency: int = 100, speed: float | None = None, error: 
 
 
 class BenchmarkTests(unittest.TestCase):
+    def test_fair_candidate_selection_does_not_use_global_prefix(self):
+        nodes = [
+            make_node(f"source-a-{index}") for index in range(8)
+        ] + [
+            Node(
+                uri=f"vless://id-{index}@other.example.com:443#b-{index}",
+                scheme="vless",
+                name=f"source-b-{index}",
+                clash={"name": f"source-b-{index}", "type": "vless", "server": "other.example.com", "port": 443, "uuid": f"id-{index}"},
+                source="source-02",
+            ) for index in range(2)
+        ]
+        for node in nodes[:8]:
+            node.source = "source-01"
+        selected = _fair_candidate_selection(nodes, 4, {})
+        self.assertEqual({node.source for node in selected}, {"source-01", "source-02"})
+
+    def test_low_yield_source_is_demoted_after_three_runs(self):
+        nodes = [
+            make_node(f"a-{index}") for index in range(8)
+        ] + [
+            Node(
+                uri=f"vless://id-{index}@other.example.com:443#b-{index}",
+                scheme="vless",
+                name=f"b-{index}",
+                clash={"name": f"b-{index}", "type": "vless", "server": "other.example.com", "port": 443, "uuid": f"b-{index}"},
+                source="source-02",
+            ) for index in range(8)
+        ]
+        for node in nodes[:8]:
+            node.source = "source-01"
+        selected = _fair_candidate_selection(nodes, 8, {"source-01": {"low_yield_streak": 3}, "source-02": {}})
+        self.assertGreaterEqual(sum(node.source == "source-02" for node in selected), 4)
+
     def test_zero_speed_limit_tests_every_latency_valid_node(self):
         nodes = [make_node("one", 100), make_node("two", 200), make_node("three", 300)]
         benchmark = MihomoBenchmark(

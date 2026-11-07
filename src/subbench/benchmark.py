@@ -138,7 +138,9 @@ class MihomoBenchmark:
             except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
                 last_error = exc
         if last_error:
-            node.error = f"latency: {last_error}"
+            status_code = getattr(getattr(last_error, "response", None), "status_code", None)
+            detail = f"HTTP {status_code}" if status_code else type(last_error).__name__
+            node.error = f"latency: {detail}"
         return node
 
     def benchmark_latency(self, nodes: list[Node]) -> list[Node]:

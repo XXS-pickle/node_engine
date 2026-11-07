@@ -84,11 +84,13 @@ try {
         }
     }
 
-    $env:MAX_NODES = "$MaxNodes"
-    $env:MAX_OUTPUT_NODES = "$MaxNodes"
-    $env:TCP_PREFILTER_ENABLED = "0"
-    $env:TCP_CONNECT_TIMEOUT_SECONDS = "3"
-    $env:TCP_CONNECT_ATTEMPTS = "2"
+    $env:MAX_NODES = "0"
+    $env:MAX_OUTPUT_NODES = "300"
+    $env:MAX_MIHOMO_CANDIDATES = "3000"
+    $env:SOURCE_QUALITY_STATE = "$WorkDir\source-quality.json"
+    $env:TCP_PREFILTER_ENABLED = "1"
+    $env:TCP_CONNECT_TIMEOUT_SECONDS = "2"
+    $env:TCP_CONNECT_ATTEMPTS = "1"
     $env:TCP_PREFILTER_WORKERS = "128"
     $env:MAX_LATENCY_MS = "$MaxLatencyMs"
     $env:LATENCY_TEST_URL = "https://www.gstatic.com/generate_204"
@@ -99,7 +101,7 @@ try {
     $env:SPEED_TEST_LIMIT = "0"
     $env:SPEED_TEST_BYTES = "$SpeedTestBytes"
     $env:SPEED_TIMEOUT_SECONDS = "8"
-    $env:BENCHMARK_WORKERS = "$LatencyWorkers"
+    $env:BENCHMARK_WORKERS = "32"
     $env:GEOIP_TEST_URLS = "https://www.cloudflare.com/cdn-cgi/trace,https://api.country.is/"
 
     & $PythonExe -m subbench run --mihomo $Mihomo --output $Output --workdir $WorkDir

@@ -85,7 +85,12 @@ def _rename_uri(uri: str, scheme: str, name: str) -> str:
     return f"{main}#{quote(name, safe='')}"
 
 
-def write_outputs(output_dir: Path, nodes: list[Node], source_errors: list[dict[str, str]]) -> None:
+def write_outputs(
+    output_dir: Path,
+    nodes: list[Node],
+    source_errors: list[dict[str, str]],
+    source_stats: dict[str, dict[str, int]] | None = None,
+) -> None:
     if not nodes:
         raise ValueError("Refusing to write empty subscription outputs.")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -135,6 +140,7 @@ def write_outputs(output_dir: Path, nodes: list[Node], source_errors: list[dict[
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "node_count": len(nodes),
         "source_errors": source_errors,
+        "source_quality": source_stats or {},
         "nodes": [node.report_dict() for node in nodes],
     }
     (output_dir / "report.json").write_text(
