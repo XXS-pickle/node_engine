@@ -6,7 +6,7 @@
 
 ## 简体中文
 
-本项目基于 735754647/Free-Nodes，复用其多来源采集、协议解析、完整连接参数去重、Mihomo External Controller 测活和 GitHub Pages 发布。Actions 每 3 小时抓取 `config/sources.txt` 中的成品订阅，先用 2000ms TCP 预筛，再按来源公平分配最多 3000 个候选，以 32 并发通过 Mihomo 访问 `https://www.gstatic.com/generate_204`，每节点超时 5000ms；只保留通过节点，名称统一添加 ` | tg@zzyyffxx`。
+本项目自动整理、去重并测试节点订阅，通过 Mihomo 和 GitHub Pages 发布结果。Actions 每 3 小时运行一次，先用 2000ms TCP 预筛，再公平分配最多 3000 个候选，以 32 并发通过 Mihomo 访问 `https://www.gstatic.com/generate_204`，每节点超时 5000ms；只保留通过节点，名称统一添加 ` | tg@zzyyffxx`。
 
 > 免费节点来自公开网络，可能随时失效、限速或被修改。请勿用于传输敏感信息，也不要将测速结果视为长期可用保证。
 
@@ -17,7 +17,7 @@
 | V2Ray | `https://XXS-pickle.github.io/node_engine/v2ray.txt` | Base64 编码订阅，适用于 v2rayN、v2rayNG 等客户端 |
 | Clash / Mihomo | `https://XXS-pickle.github.io/node_engine/clash.yaml` | 完整 Clash/Mihomo 配置，包含自动延迟选择组 |
 | 原始节点 | `https://XXS-pickle.github.io/node_engine/v2ray-raw.txt` | 未进行 Base64 编码的节点链接 |
-| 测速报告 | `https://XXS-pickle.github.io/node_engine/report.json` | 节点来源、延迟、速度和错误信息 |
+| 测速报告 | `https://XXS-pickle.github.io/node_engine/report.json` | 运行统计和测试结果 |
 | 状态页面 | `https://XXS-pickle.github.io/node_engine/` | 最近一次生成结果和节点列表 |
 
 首次使用前，需要在仓库 `Settings → Pages` 中将发布来源设置为 **GitHub Actions**。Pages 尚未启用时，上述链接会返回 404。
@@ -57,20 +57,6 @@ https://XXS-pickle.github.io/node_engine/clash.yaml
 ```
 
 不同客户端对协议和传输方式的支持程度不同。如果某个节点在报告中可用，但客户端无法连接，请检查客户端内核版本以及对应协议支持情况。
-
-### 添加节点来源
-
-公开成品来源写入 [`config/sources.txt`](config/sources.txt)，严格一行一个 URL。该文件包含 8 个指定项目的最终订阅，不递归抓取它们的上游。
-
-私人订阅或带 Token 的 URL 不要写入该文件。将它们逐行放入仓库 Actions Secret `SOURCE_URLS`：
-
-```text
-Settings → Secrets and variables → Actions → New repository secret
-Name: SOURCE_URLS
-Value: 每行一个私人订阅 URL
-```
-
-公开来源和 Secret 来源会一并抓取；即使输入 URL 保存在 Secret 中，生成的 GitHub Pages 节点订阅仍然公开。日志只显示来源数量和统计数据，不显示来源 URL、节点连接串或凭据。
 
 ### 测速设置
 
@@ -146,7 +132,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test_local.ps1 -EnableSpeedTest
 
 ## English
 
-This repository is a small adaptation of 735754647/Free-Nodes. It reuses the upstream multi-source collector, protocol parsers, complete connection-configuration deduplication, Mihomo External Controller checks, and GitHub Pages publishing. Every three hours, Actions fetches the final feeds in `config/sources.txt`, tests each node through Mihomo against `https://www.gstatic.com/generate_204` with a 2000 ms TCP prefilter, fair per-source allocation capped at 3000 candidates, 32 Mihomo workers, and a 5000 ms per-node timeout, drops failures, and appends ` | tg@zzyyffxx` to surviving names.
+This repository automatically normalizes, deduplicates, and tests subscription nodes, then publishes the result through Mihomo and GitHub Pages. Every three hours, Actions runs a 2000 ms TCP prefilter, fairly allocates up to 3000 candidates, tests them through Mihomo with 32 workers against `https://www.gstatic.com/generate_204`, drops failures, and appends ` | tg@zzyyffxx` to surviving names.
 
 > Public free nodes can disappear, slow down, or change without notice. Do not use them for sensitive traffic, and do not treat a successful CI test as a long-term availability guarantee.
 
@@ -157,7 +143,7 @@ This repository is a small adaptation of 735754647/Free-Nodes. It reuses the ups
 | V2Ray | `https://XXS-pickle.github.io/node_engine/v2ray.txt` | Base64 subscription for clients such as v2rayN and v2rayNG |
 | Clash / Mihomo | `https://XXS-pickle.github.io/node_engine/clash.yaml` | Complete configuration with an automatic latency group |
 | Raw links | `https://XXS-pickle.github.io/node_engine/v2ray-raw.txt` | Extracted node links without Base64 encoding |
-| Benchmark report | `https://XXS-pickle.github.io/node_engine/report.json` | Source, latency, speed, and error details |
+| Benchmark report | `https://XXS-pickle.github.io/node_engine/report.json` | Runtime statistics and test results |
 | Status page | `https://XXS-pickle.github.io/node_engine/` | Latest generated results and node table |
 
 Before the first deployment, open `Settings → Pages` and select **GitHub Actions** as the publishing source. The URLs return 404 until Pages is enabled.
@@ -191,12 +177,6 @@ Clash: https://XXS-pickle.github.io/node_engine/clash.yaml
 ```
 
 Protocol and transport support varies between clients. A node that passes the CI benchmark can still fail on an older or incompatible client core.
-
-### Adding Sources
-
-Add public final-feed URLs to [`config/sources.txt`](config/sources.txt), one URL per line. It contains one finished aggregate feed for each of the eight requested projects; upstream sources are not recursively crawled.
-
-Keep private or tokenized source URLs out of this public file. Add them as newline-separated values in the repository Actions secret named `SOURCE_URLS`. Public and secret feeds are processed together. The published Pages subscription is public even when an input URL is secret. Logs contain only aggregate counts and runtime, never source URLs or node credentials.
 
 ### Benchmark Configuration
 
@@ -256,7 +236,3 @@ This repository is intended for technical research, network testing, and automat
 ### References
 
 - [Mihomo](https://github.com/MetaCubeX/mihomo)
-- [free18/v2ray](https://github.com/free18/v2ray)
-- [AutoMergePublicNodes](https://github.com/chengaopan/AutoMergePublicNodes)
-- [NoMoreWalls](https://github.com/peasoft/NoMoreWalls)
-- [ConfigForge-V2Ray](https://github.com/ShatakVPN/ConfigForge-V2Ray)
