@@ -13,3 +13,4 @@ https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.y
 https://raw.githubusercontent.com/shaoyouvip/free/main/all.yaml
 https://raw.githubusercontent.com/go4sharing/sub/main/sub.yaml
 https://sub.scpnb.top/base64
+https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/master/list.txt
