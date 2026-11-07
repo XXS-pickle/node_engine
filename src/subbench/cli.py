@@ -458,8 +458,12 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         return run(args)
-    except Exception:
-        print("Build failed; existing subscription outputs were retained.", file=sys.stderr)
+    except Exception as exc:
+        print(
+            f"Build failed ({type(exc).__name__}: {str(exc)[:160]}); "
+            "existing subscription outputs were retained.",
+            file=sys.stderr,
+        )
         return 1
 
 
