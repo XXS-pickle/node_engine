@@ -7,7 +7,7 @@ import requests
 import yaml
 
 from subbench.benchmark import MihomoBenchmark, _parse_geo_payload, write_mihomo_config
-from subbench.cli import _fair_candidate_selection, _filter_benchmarked_nodes
+from subbench.cli import _fair_candidate_selection, _filter_benchmarked_nodes, _quota_select
 from subbench.models import Node
 
 
@@ -58,6 +58,33 @@ class BenchmarkTests(unittest.TestCase):
             node.source = "source-01"
         selected = _fair_candidate_selection(nodes, 8, {"source-01": {"low_yield_streak": 3}, "source-02": {}})
         self.assertGreaterEqual(sum(node.source == "source-02" for node in selected), 4)
+
+    def test_quota_selection_caps_priority_regions_and_other(self):
+        nodes = []
+        for country, count in (("US", 200), ("SG", 100), ("JP", 100), ("HK", 100), ("CA", 100)):
+            for index in range(count):
+                node = make_node(f"{country}-{index}")
+                node.metadata["country_code"] = country
+                nodes.append(node)
+        selected = _quota_select(nodes, 300)
+        counts = {}
+        for node in selected:
+            code = node.metadata["country_code"]
+            bucket = code if code in {"US", "SG", "JP", "HK"} else "OTHER"
+            counts[bucket] = counts.get(bucket, 0) + 1
+        self.assertEqual(len(selected), 300)
+        self.assertEqual(counts, {"US": 80, "SG": 70, "JP": 70, "HK": 50, "OTHER": 30})
+
+    def test_quota_selection_does_not_backfill_missing_regions(self):
+        nodes = []
+        for country, count in (("US", 200), ("CA", 200)):
+            for index in range(count):
+                node = make_node(f"{country}-{index}")
+                node.metadata["country_code"] = country
+                nodes.append(node)
+        selected = _quota_select(nodes, 300)
+        self.assertEqual(len(selected), 110)
+        self.assertEqual(sum(node.metadata["country_code"] == "US" for node in selected), 80)
 
     def test_zero_speed_limit_tests_every_latency_valid_node(self):
         nodes = [make_node("one", 100), make_node("two", 200), make_node("three", 300)]

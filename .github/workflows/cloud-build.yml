@@ -166,7 +166,7 @@ jobs:
           LATENCY_TEST_ATTEMPTS: "1"
           MIN_SPEED_MBPS: "0.1"
           GEOIP_TEST_URLS: "https://www.cloudflare.com/cdn-cgi/trace,https://api.country.is/"
-          GEOIP_LIMIT: "300"
+          GEOIP_LIMIT: "0"
           SPEED_TEST_ENABLED: "1"
           SPEED_TEST_LIMIT: "100"
           SPEED_TEST_WORKERS: "8"

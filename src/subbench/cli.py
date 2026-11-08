@@ -38,6 +38,37 @@ def _bool_env(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+# Fixed publication slots keep the four priority regions visible. The final
+# 30 slots are reserved for every other country combined.
+COUNTRY_QUOTAS = {"US": 80, "SG": 70, "JP": 70, "HK": 50, "OTHER": 30}
+
+
+def _country_code(node: Node) -> str:
+    code = str(node.metadata.get("country_code") or "").upper()
+    return code if len(code) == 2 and code.isalpha() else ""
+
+
+def _quota_select(nodes: list[Node], limit: int) -> list[Node]:
+    """Select by country slots without allowing US nodes to fill every slot."""
+    if limit <= 0 or len(nodes) <= limit:
+        return list(nodes)
+    buckets: dict[str, list[Node]] = defaultdict(list)
+    for node in nodes:
+        code = _country_code(node)
+        buckets[code if code in {"US", "SG", "JP", "HK"} else "OTHER"].append(node)
+
+    selected: list[Node] = []
+    for bucket, quota in COUNTRY_QUOTAS.items():
+        chosen = buckets.get(bucket, [])[:quota]
+        selected.extend(chosen)
+        if len(selected) >= limit:
+            return selected[:limit]
+
+    # Do not backfill from another region: the quota is a hard cap, and a
+    # smaller publication is more honest than silently becoming US-only.
+    return selected[:limit]
+
+
 def _filter_benchmarked_nodes(
     nodes: list[Node],
     max_latency: int,
@@ -302,8 +333,9 @@ def run(args: argparse.Namespace) -> int:
         )
         raise RuntimeError("No nodes reached Mihomo testing.")
 
+    mihomo_candidates = list(nodes)
     prepare_names(nodes)
-    nodes_tested = len(nodes)
+    nodes_tested = len(mihomo_candidates)
     speed_test_enabled = _bool_env("SPEED_TEST_ENABLED", False)
     workdir = Path(args.workdir)
     try:
@@ -327,7 +359,7 @@ def run(args: argparse.Namespace) -> int:
             speed_limit=_int_env("SPEED_TEST_LIMIT", 0),
             speed_timeout_seconds=_int_env("SPEED_TIMEOUT_SECONDS", 8),
             workers=_int_env("BENCHMARK_WORKERS", 32),
-            geo_limit=_int_env("GEOIP_LIMIT", 300),
+            geo_limit=_int_env("GEOIP_LIMIT", 0),
             speed_workers=_int_env("SPEED_TEST_WORKERS", 8),
             speed_enabled=speed_test_enabled,
             latency_attempts=_int_env("LATENCY_TEST_ATTEMPTS", 1),
@@ -350,8 +382,9 @@ def run(args: argparse.Namespace) -> int:
         )
         raise
 
-    for node in nodes:
+    for node in mihomo_candidates:
         source_stats[node.source]["mihomo_tested"] += 1
+    for node in nodes:
         if node.error is None and node.latency_ms is not None:
             source_stats[node.source]["mihomo_alive"] += 1
     _update_quality_state(quality_state, source_stats)
@@ -387,7 +420,7 @@ def run(args: argparse.Namespace) -> int:
     nodes_failed = max(0, nodes_tested - nodes_alive)
     max_output_nodes = _int_env("MAX_OUTPUT_NODES", 300)
     if max_output_nodes > 0:
-        nodes = nodes[:max_output_nodes]
+        nodes = _quota_select(nodes, max_output_nodes)
     final_nodes = len(nodes)
 
     if nodes_alive == 0 or final_nodes == 0:
