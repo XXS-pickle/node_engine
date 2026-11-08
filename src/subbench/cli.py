@@ -40,7 +40,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
 # Fixed publication slots keep the four priority regions visible. The final
 # 30 slots are reserved for every other country combined.
-COUNTRY_QUOTAS = {"US": 80, "SG": 70, "JP": 70, "HK": 50, "OTHER": 30}
+COUNTRY_QUOTAS = {"US": 150, "SG": 120, "JP": 100, "HK": 100, "OTHER": 30}
 
 
 def _country_code(node: Node) -> str:

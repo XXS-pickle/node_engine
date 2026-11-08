@@ -85,8 +85,8 @@ try {
     }
 
     $env:MAX_NODES = "0"
-    $env:MAX_OUTPUT_NODES = "300"
-    $env:MAX_MIHOMO_CANDIDATES = "3000"
+    $env:MAX_OUTPUT_NODES = "500"
+    $env:MAX_MIHOMO_CANDIDATES = "5000"
     $env:SOURCE_QUALITY_STATE = "$WorkDir\source-quality.json"
     $env:TCP_PREFILTER_ENABLED = "1"
     $env:TCP_CONNECT_TIMEOUT_SECONDS = "2"
@@ -98,11 +98,12 @@ try {
     $env:LATENCY_TEST_ATTEMPTS = "1"
     $env:MIN_SPEED_MBPS = "$MinSpeedMbps"
     $env:SPEED_TEST_ENABLED = if ($EnableSpeedTest) { "1" } else { "0" }
-    $env:SPEED_TEST_LIMIT = if ($EnableSpeedTest) { "100" } else { "0" }
+    $env:SPEED_TEST_LIMIT = if ($EnableSpeedTest) { "500" } else { "0" }
     $env:SPEED_TEST_WORKERS = "8"
     $env:SPEED_TEST_BYTES = "$SpeedTestBytes"
     $env:SPEED_TIMEOUT_SECONDS = "8"
     $env:BENCHMARK_WORKERS = "32"
+    $env:BRANDING_SUFFIX = " | tg@zzyyffxx"
     $env:GEOIP_TEST_URLS = "https://www.cloudflare.com/cdn-cgi/trace,https://api.country.is/"
     $env:GEOIP_LIMIT = "300"
 

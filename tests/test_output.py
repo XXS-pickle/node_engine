@@ -1,8 +1,10 @@
 import base64
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 from urllib.parse import unquote
 
 import yaml
@@ -69,10 +71,29 @@ class OutputTests(unittest.TestCase):
             report = json.loads((output / "report.json").read_text(encoding="utf-8"))
             raw_uris = (output / "v2ray-raw.txt").read_text(encoding="utf-8").splitlines()
         names = [proxy["name"] for proxy in clash["proxies"]]
-        self.assertEqual(names, ["🇯🇵 日本 01", "🇯🇵 日本 02", "🇺🇸 美国 01", "🌐 其他国家 01"])
+        self.assertEqual(names, ["🇯🇵 日本 01", "🇯🇵 日本 02", "🇺🇸 美国 01", "🌐 未知 01"])
         self.assertTrue(all("upstream" not in name and "source" not in name for name in names))
         self.assertTrue(all(unquote(uri.split("#", 1)[1]) in names for uri in raw_uris))
         self.assertTrue(all("original_name" not in item for item in report["nodes"]))
+
+    def test_channel_suffix_is_appended_to_public_names(self):
+        node = make_node("one", "HK")
+        with TemporaryDirectory() as directory, patch.dict(os.environ, {"BRANDING_SUFFIX": " | tg@zzyyffxx"}):
+            output = Path(directory)
+            write_outputs(output, [node], [])
+            clash = yaml.safe_load((output / "clash.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(clash["proxies"][0]["name"], "🇭🇰 香港 01 | tg@zzyyffxx")
+
+    def test_other_country_keeps_country_name_but_uses_combined_group(self):
+        node = make_node("one", "CA")
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            write_outputs(output, [node], [])
+            clash = yaml.safe_load((output / "clash.yaml").read_text(encoding="utf-8"))
+        groups = {item["name"]: item for item in clash["proxy-groups"]}
+        self.assertEqual(clash["proxies"][0]["name"], "🇨🇦 加拿大 01")
+        self.assertIn("🌐 其他国家", groups)
+        self.assertIn("🇨🇦 加拿大 01", groups["🌐 其他国家"]["proxies"])
 
     def test_output_generates_manual_auto_speed_and_region_groups(self):
         nodes = [make_node("one", "HK", 20.0), make_node("two", "JP", 5.0), make_node("three", "JP")]

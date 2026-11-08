@@ -43,6 +43,7 @@ class Node:
             "exit_ip": self.metadata.get("exit_ip"),
             "tcp_connect_ms": self.metadata.get("tcp_connect_ms"),
             "aliyun_tcp_reachable": self.metadata.get("aliyun_tcp_reachable"),
+            "speed_test_failed": self.metadata.get("speed_test_failed", False),
             "latency_ms": self.latency_ms,
             "speed_mbps": self.speed_mbps,
             "error": self.error,

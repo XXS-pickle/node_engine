@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import os
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,8 +64,15 @@ def _flag(country_code: str) -> str:
 
 def _region_label(node: Node) -> str:
     country_code = str(node.metadata.get("country_code") or "").upper()
+    if not country_code:
+        return "🌐 未知"
+    return f"{_flag(country_code)} {COUNTRY_NAMES.get(country_code, country_code)}"
+
+
+def _region_group_label(node: Node) -> str:
+    country_code = str(node.metadata.get("country_code") or "").upper()
     if country_code in {"US", "SG", "JP", "HK"}:
-        return f"{_flag(country_code)} {COUNTRY_NAMES.get(country_code, country_code)}"
+        return _region_label(node)
     return "🌐 其他国家"
 
 
@@ -73,14 +81,24 @@ def _numbered_name(label: str, number: int) -> str:
     return f"{label} {number:0{width}d}"
 
 
+def _channel_suffix() -> str:
+    """Return the optional promotion suffix without exposing source metadata."""
+    suffix = " ".join(str(os.environ.get("BRANDING_SUFFIX", "")).split())
+    if suffix:
+        suffix = " " + suffix
+    return suffix[:80]
+
+
 def apply_display_names(nodes: list[Node]) -> dict[str, list[str]]:
-    """Replace all source labels with short country/number display names."""
+    """Replace source labels with short country/number names and an optional suffix."""
     counters: Counter[str] = Counter()
     grouped: dict[str, list[str]] = defaultdict(list)
+    suffix = _channel_suffix()
     for node in nodes:
         label = _region_label(node)
         counters[label] += 1
-        node.name = _numbered_name(label, counters[label])
+        base_name = _numbered_name(label, counters[label])
+        node.name = f"{base_name}{suffix}" if suffix else base_name
         if node.clash:
             node.clash["name"] = node.name
         grouped[label].append(node.name)
@@ -105,9 +123,12 @@ def _rename_uri(uri: str, scheme: str, name: str) -> str:
 def _proxy_groups(nodes: list[Node], grouped_names: dict[str, list[str]]) -> list[dict[str, object]]:
     all_names = [node.name for node in nodes]
     speed_names = [node.name for node in nodes if node.speed_mbps is not None]
-    ordered_regions = sorted(grouped_names, key=lambda label: (-len(grouped_names[label]), label))
+    grouped_regions: dict[str, list[str]] = defaultdict(list)
+    for node in nodes:
+        grouped_regions[_region_group_label(node)].append(node.name)
+    ordered_regions = sorted(grouped_regions, key=lambda label: (-len(grouped_regions[label]), label))
     featured_regions = ordered_regions[:12]
-    covered = {name for label in featured_regions for name in grouped_names[label]}
+    covered = {name for label in featured_regions for name in grouped_regions[label]}
     other_names = [name for name in all_names if name not in covered]
 
     groups: list[dict[str, object]] = [
@@ -126,15 +147,15 @@ def _proxy_groups(nodes: list[Node], grouped_names: dict[str, list[str]]) -> lis
         },
     ]
     for label in featured_regions:
-        groups.append({"name": label, "type": "select", "proxies": grouped_names[label]})
+        groups.append({"name": label, "type": "select", "proxies": grouped_regions[label]})
     if other_names:
-        groups.append({"name": "🌐 其他地区", "type": "select", "proxies": other_names})
+        groups.append({"name": "🌐 其他国家", "type": "select", "proxies": other_names})
     groups.append({"name": "🌐 全部节点", "type": "select", "proxies": all_names})
     manual_choices = [
         "🚀 自动优选",
         "⚡ 速度优选",
         *featured_regions,
-        *( ["🌐 其他地区"] if other_names else [] ),
+        *( ["🌐 其他国家"] if other_names else [] ),
         "🌐 全部节点",
         "DIRECT",
     ]

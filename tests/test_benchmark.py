@@ -66,14 +66,14 @@ class BenchmarkTests(unittest.TestCase):
                 node = make_node(f"{country}-{index}")
                 node.metadata["country_code"] = country
                 nodes.append(node)
-        selected = _quota_select(nodes, 300)
+        selected = _quota_select(nodes, 500)
         counts = {}
         for node in selected:
             code = node.metadata["country_code"]
             bucket = code if code in {"US", "SG", "JP", "HK"} else "OTHER"
             counts[bucket] = counts.get(bucket, 0) + 1
-        self.assertEqual(len(selected), 300)
-        self.assertEqual(counts, {"US": 80, "SG": 70, "JP": 70, "HK": 50, "OTHER": 30})
+        self.assertEqual(len(selected), 480)
+        self.assertEqual(counts, {"US": 150, "SG": 100, "JP": 100, "HK": 100, "OTHER": 30})
 
     def test_quota_selection_does_not_backfill_missing_regions(self):
         nodes = []
@@ -83,8 +83,8 @@ class BenchmarkTests(unittest.TestCase):
                 node.metadata["country_code"] = country
                 nodes.append(node)
         selected = _quota_select(nodes, 300)
-        self.assertEqual(len(selected), 110)
-        self.assertEqual(sum(node.metadata["country_code"] == "US" for node in selected), 80)
+        self.assertEqual(len(selected), 180)
+        self.assertEqual(sum(node.metadata["country_code"] == "US" for node in selected), 150)
 
     def test_zero_speed_limit_tests_every_latency_valid_node(self):
         nodes = [make_node("one", 100), make_node("two", 200), make_node("three", 300)]
