@@ -1,0 +1,19 @@
+# Public Telegram channels used only for short-lived dynamic subscription discovery.
+# Dynamic URLs expire after ttl_hours and are persisted in Actions Cache, not Git.
+ttl_hours: 24
+max_message_age_hours: 24
+max_urls_per_channel: 5
+max_dynamic_urls: 15
+channels:
+  - id: dns68
+    feeds:
+      - https://rsshub.rssforever.com/telegram/channel/dns68
+      - https://hub.slarker.me/telegram/channel/dns68
+  - id: wxdy666
+    feeds:
+      - https://rsshub.rssforever.com/telegram/channel/wxdy666
+      - https://hub.slarker.me/telegram/channel/wxdy666
+  - id: freeVPNjd
+    feeds:
+      - https://rsshub.rssforever.com/telegram/channel/freeVPNjd
+      - https://hub.slarker.me/telegram/channel/freeVPNjd

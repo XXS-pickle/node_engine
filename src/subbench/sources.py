@@ -45,11 +45,12 @@ def _extract_v2nodes_subscription_url(document: str) -> str:
     return match.group(0)
 
 
-def load_sources(path: Path) -> list[SourceSpec]:
+def load_sources(path: Path, extra_urls: list[str] | tuple[str, ...] = ()) -> list[SourceSpec]:
     lines: list[str] = []
     if path.exists():
         lines.extend(path.read_text(encoding="utf-8").splitlines())
     lines.extend(os.environ.get("SOURCE_URLS", "").splitlines())
+    lines.extend(extra_urls)
 
     specs: list[SourceSpec] = []
     seen: set[str] = set()

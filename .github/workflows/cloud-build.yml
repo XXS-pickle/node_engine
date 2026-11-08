@@ -134,6 +134,16 @@ jobs:
           restore-keys: |
             source-quality-${{ github.repository }}-
 
+      - name: Restore Telegram dynamic-source state
+        id: restore_telegram_dynamic_state
+        uses: actions/cache/restore@v5
+        with:
+          path: .work/dynamic-sources.json
+          enableCrossOsArchive: true
+          key: telegram-dynamic-${{ github.repository }}-${{ github.run_id }}
+          restore-keys: |
+            telegram-dynamic-${{ github.repository }}-
+
       - name: Build subscriptions
         id: build_subscriptions
         shell: bash
@@ -154,6 +164,10 @@ jobs:
           MAX_OUTPUT_NODES: "500"
           MAX_MIHOMO_CANDIDATES: "5000"
           SOURCE_QUALITY_STATE: ".work/source-quality.json"
+          TELEGRAM_DYNAMIC_SOURCES_ENABLED: "1"
+          TELEGRAM_CHANNELS_CONFIG: "config/telegram_channels.yaml"
+          TELEGRAM_DYNAMIC_STATE: ".work/dynamic-sources.json"
+          TELEGRAM_RSS_TIMEOUT_SECONDS: "8"
           TCP_PREFILTER_ENABLED: "1"
           TCP_CONNECT_TIMEOUT_SECONDS: "2"
           TCP_CONNECT_ATTEMPTS: "1"
@@ -185,6 +199,14 @@ jobs:
           path: .work/source-quality.json
           enableCrossOsArchive: true
           key: source-quality-${{ github.repository }}-${{ github.run_id }}
+
+      - name: Save Telegram dynamic-source state
+        if: always() && hashFiles('.work/dynamic-sources.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: .work/dynamic-sources.json
+          enableCrossOsArchive: true
+          key: telegram-dynamic-${{ github.repository }}-${{ github.run_id }}
 
       - name: Upload subscription output (attempt 1)
         id: upload_subscription_1

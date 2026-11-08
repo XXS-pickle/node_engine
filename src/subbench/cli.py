@@ -15,6 +15,7 @@ from .output import prepare_names, write_outputs
 from .parsers import count_raw_entries, parse_document
 from .prefilter import aliyun_tcp_prefilter, normalize_aliyun_url, tcp_prefilter
 from .sources import fetch_sources, load_sources
+from .telegram_sources import record_dynamic_parse_results, refresh_dynamic_sources
 
 
 def _int_env(name: str, default: int) -> int:
@@ -172,7 +173,19 @@ def _update_quality_state(
 
 def run(args: argparse.Namespace) -> int:
     started_at = time.monotonic()
-    source_specs = load_sources(args.sources)
+    dynamic_registry_path = Path(os.environ.get("TELEGRAM_DYNAMIC_STATE", ".work/dynamic-sources.json"))
+    dynamic_urls: list[str] = []
+    if _bool_env("TELEGRAM_DYNAMIC_SOURCES_ENABLED", False):
+        try:
+            dynamic_urls, _ = refresh_dynamic_sources(
+                dynamic_registry_path,
+                Path(os.environ.get("TELEGRAM_CHANNELS_CONFIG", "config/telegram_channels.yaml")),
+                timeout_seconds=_float_env("TELEGRAM_RSS_TIMEOUT_SECONDS", 20.0),
+            )
+        except Exception as exc:
+            print(f"Telegram RSS discovery failed: {type(exc).__name__}", file=sys.stderr)
+    source_specs = load_sources(args.sources, dynamic_urls)
+    dynamic_url_set = set(dynamic_urls)
     if not source_specs:
         _print_run_summary(
             started_at=started_at,
@@ -204,10 +217,13 @@ def run(args: argparse.Namespace) -> int:
     }
     raw_nodes = 0
     sources_successful = 0
+    dynamic_parse_counts: dict[str, int] = {}
     for result in source_results:
         stats = source_stats[result.source.name]
         if result.error:
             source_errors.append({"source": result.source.name, "error": result.error})
+            if result.source.url in dynamic_url_set:
+                dynamic_parse_counts[result.source.url] = 0
             continue
         stats["fetched"] = 1
         text = result.text or ""
@@ -216,13 +232,20 @@ def run(args: argparse.Namespace) -> int:
             parsed = parse_document(text, result.source.name, skipped_nodes)
         except Exception as exc:
             source_errors.append({"source": result.source.name, "error": type(exc).__name__})
+            if result.source.url in dynamic_url_set:
+                dynamic_parse_counts[result.source.url] = 0
             continue
         stats["parsed"] = len(parsed)
+        if result.source.url in dynamic_url_set:
+            dynamic_parse_counts[result.source.url] = len(parsed)
         if not parsed:
             source_errors.append({"source": result.source.name, "error": "no_supported_nodes"})
             continue
         sources_successful += 1
         nodes.extend(parsed)
+
+    if dynamic_parse_counts:
+        record_dynamic_parse_results(dynamic_registry_path, dynamic_parse_counts)
 
     parsed_nodes = len(nodes)
     unique: dict[str, Node] = {}
