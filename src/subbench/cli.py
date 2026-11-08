@@ -38,35 +38,11 @@ def _bool_env(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-# Fixed publication slots keep the four priority regions visible. The final
-# 30 slots are reserved for every other country combined.
-COUNTRY_QUOTAS = {"US": 150, "SG": 120, "JP": 100, "HK": 100, "OTHER": 30}
-
-
-def _country_code(node: Node) -> str:
-    code = str(node.metadata.get("country_code") or "").upper()
-    return code if len(code) == 2 and code.isalpha() else ""
-
-
-def _quota_select(nodes: list[Node], limit: int) -> list[Node]:
-    """Select by country slots without allowing US nodes to fill every slot."""
+def _select_output_nodes(nodes: list[Node], limit: int) -> list[Node]:
+    """Keep the best-quality nodes (already sorted) up to the output cap."""
     if limit <= 0 or len(nodes) <= limit:
         return list(nodes)
-    buckets: dict[str, list[Node]] = defaultdict(list)
-    for node in nodes:
-        code = _country_code(node)
-        buckets[code if code in {"US", "SG", "JP", "HK"} else "OTHER"].append(node)
-
-    selected: list[Node] = []
-    for bucket, quota in COUNTRY_QUOTAS.items():
-        chosen = buckets.get(bucket, [])[:quota]
-        selected.extend(chosen)
-        if len(selected) >= limit:
-            return selected[:limit]
-
-    # Do not backfill from another region: the quota is a hard cap, and a
-    # smaller publication is more honest than silently becoming US-only.
-    return selected[:limit]
+    return nodes[:limit]
 
 
 def _filter_benchmarked_nodes(
@@ -420,7 +396,7 @@ def run(args: argparse.Namespace) -> int:
     nodes_failed = max(0, nodes_tested - nodes_alive)
     max_output_nodes = _int_env("MAX_OUTPUT_NODES", 300)
     if max_output_nodes > 0:
-        nodes = _quota_select(nodes, max_output_nodes)
+        nodes = _select_output_nodes(nodes, max_output_nodes)
     final_nodes = len(nodes)
 
     if nodes_alive == 0 or final_nodes == 0:
