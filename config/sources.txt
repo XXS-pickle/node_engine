@@ -11,3 +11,9 @@ https://raw.githubusercontent.com/ripaojiedian/freenode/main/clash
 https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.yml
 https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity.yml
 https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/clash.yml
+https://raw.githubusercontent.com/wuge0/free-nodes/main/output/github.yaml
+https://radarhub.top/clash.yaml
+https://gist.githubusercontent.com/shuaidaoya/9e5cf2749c0ce79932dd9229d9b4162b/raw/all.yaml
+https://cdn.jsdelivr.net/gh/xiaoji235/airport-free/clash/clashnodecc.txt
+https://www.xrayvip.com/free.yaml
+https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/mini.txt
