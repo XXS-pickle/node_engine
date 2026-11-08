@@ -3,10 +3,10 @@ https://sub.scpnb.top/base64
 https://raw.githubusercontent.com/go4sharing/sub/main/sub.yaml
 https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub
 https://stymei.445569.xyz/
-https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/master/list.txt
-https://github.com/Au1rxx/free-vpn-subscriptions/raw/main/output/clash.yaml
-https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/splitted/mixed
 https://raw.githubusercontent.com/free-nodes/v2rayfree/main/sub
-https://raw.githubusercontent.com/Barabama/FreeNodes/refs/heads/main/nodes/merged.yaml
 https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/clash_config.yaml
-https://gh-proxy.com/raw.githubusercontent.com/Ruk1ng001/freeSub/main/clash.yaml
+https://raw.githubusercontent.com/free18/v2ray/main/c.yaml
+https://raw.githubusercontent.com/wobushilixi/free-proxy-nodes/main/clash.yaml
+https://raw.githubusercontent.com/ripaojiedian/freenode/main/clash
+https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.yml
+https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity.yml
