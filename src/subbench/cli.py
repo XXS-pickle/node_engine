@@ -443,7 +443,18 @@ def run(args: argparse.Namespace) -> int:
     try:
         with TemporaryDirectory(prefix=".subbench-stage-", dir=str(output_dir.parent)) as stage_root:
             staged_dir = Path(stage_root) / "public"
-            write_outputs(staged_dir, nodes, source_errors, source_stats)
+            write_outputs(
+                staged_dir,
+                nodes,
+                source_errors,
+                source_stats,
+                {
+                    "duration_seconds": int(time.monotonic() - started_at),
+                    "collected_nodes": len(unique),
+                    "tested_nodes": nodes_tested,
+                    "alive_nodes": nodes_alive,
+                },
+            )
             validate_clash_config(mihomo, staged_dir / "clash.yaml", workdir)
             _publish_staged_outputs(staged_dir, output_dir)
     except Exception:

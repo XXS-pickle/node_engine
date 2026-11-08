@@ -10,3 +10,4 @@ https://raw.githubusercontent.com/wobushilixi/free-proxy-nodes/main/clash.yaml
 https://raw.githubusercontent.com/ripaojiedian/freenode/main/clash
 https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.yml
 https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity.yml
+https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/clash.yml

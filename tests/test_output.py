@@ -74,7 +74,8 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(names, ["🇯🇵 日本 01", "🇯🇵 日本 02", "🇺🇸 美国 01", "🌐 未知 01"])
         self.assertTrue(all("upstream" not in name and "source" not in name for name in names))
         self.assertTrue(all(unquote(uri.split("#", 1)[1]) in names for uri in raw_uris))
-        self.assertTrue(all("original_name" not in item for item in report["nodes"]))
+        self.assertNotIsInstance(report["nodes"], list)
+        self.assertTrue(all("original_name" not in item for item in report["node_details"]))
 
     def test_channel_suffix_is_appended_to_public_names(self):
         node = make_node("one", "HK")

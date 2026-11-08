@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import yaml
 
@@ -167,6 +168,7 @@ def write_outputs(
     nodes: list[Node],
     source_errors: list[dict[str, str]],
     source_stats: dict[str, dict[str, int]] | None = None,
+    run_summary: dict[str, object] | None = None,
 ) -> None:
     if not nodes:
         raise ValueError("Refusing to write empty subscription outputs.")
@@ -197,12 +199,41 @@ def write_outputs(
         yaml.safe_dump(clash_config, allow_unicode=True, sort_keys=False), encoding="utf-8"
     )
 
+    now = datetime.now(timezone.utc)
+    local_now = now.astimezone(ZoneInfo("Asia/Shanghai"))
+    region_counts: Counter[str] = Counter()
+    for node in nodes:
+        code = str(node.metadata.get("country_code") or "").upper()
+        region_counts[code if len(code) == 2 and code.isalpha() else "UNKNOWN"] += 1
+    regions = []
+    for code, count in sorted(region_counts.items(), key=lambda item: (-item[1], item[0])):
+        if code == "UNKNOWN":
+            regions.append({"name": "未知", "flag": "🌐", "count": count})
+        else:
+            regions.append({"name": COUNTRY_NAMES.get(code, code), "flag": _flag(code), "count": count})
+    summary = run_summary or {}
     report = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "success",
+        "date": local_now.strftime("%Y-%m-%d"),
+        "updated_at": local_now.strftime("%Y-%m-%d %H:%M:%S"),
+        "build_id": os.environ.get("BUILD_ID", "local"),
+        "duration_seconds": int(summary.get("duration_seconds", 0)),
+        "nodes": {
+            "collected": int(summary.get("collected_nodes", len(nodes))),
+            "published": len(nodes),
+            "tested": int(summary.get("tested_nodes", 0)),
+            "mihomo_alive": int(summary.get("alive_nodes", len(nodes))),
+        },
+        "regions": regions,
+        "subscription_url": os.environ.get(
+            "SUBSCRIPTION_URL", "https://xxs-pickle.github.io/node_engine/clash.yaml"
+        ),
+        "channel_url": os.environ.get("CHANNEL_URL", "https://t.me/zzyyffxx"),
+        "generated_at": now.isoformat(),
         "node_count": len(nodes),
         "source_errors": source_errors,
         "source_quality": source_stats or {},
-        "nodes": [node.report_dict() for node in nodes],
+        "node_details": [node.report_dict() for node in nodes],
     }
     (output_dir / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
