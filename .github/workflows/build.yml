@@ -251,6 +251,9 @@ jobs:
         env:
           SOURCE_URLS: ${{ secrets.SOURCE_URLS }}
           BRANDING_SUFFIX: " | tg@zzyyffxx"
+          BUILD_ID: "${{ github.run_id }}"
+          SUBSCRIPTION_URL: "https://xxs-pickle.github.io/node_engine/clash.yaml"
+          CHANNEL_URL: "https://t.me/zzyyffxx"
           PYTHONUTF8: "1"
           PYTHONIOENCODING: "utf-8"
           SOURCE_TIMEOUT_SECONDS: "60"
