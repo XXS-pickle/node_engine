@@ -69,7 +69,7 @@ class OutputTests(unittest.TestCase):
             report = json.loads((output / "report.json").read_text(encoding="utf-8"))
             raw_uris = (output / "v2ray-raw.txt").read_text(encoding="utf-8").splitlines()
         names = [proxy["name"] for proxy in clash["proxies"]]
-        self.assertEqual(names, ["🇯🇵 日本 01", "🇯🇵 日本 02", "🇺🇸 美国 01", "🌐 未知 01"])
+        self.assertEqual(names, ["🇯🇵 日本 01", "🇯🇵 日本 02", "🇺🇸 美国 01", "🌐 其他国家 01"])
         self.assertTrue(all("upstream" not in name and "source" not in name for name in names))
         self.assertTrue(all(unquote(uri.split("#", 1)[1]) in names for uri in raw_uris))
         self.assertTrue(all("original_name" not in item for item in report["nodes"]))

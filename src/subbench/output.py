@@ -63,9 +63,9 @@ def _flag(country_code: str) -> str:
 
 def _region_label(node: Node) -> str:
     country_code = str(node.metadata.get("country_code") or "").upper()
-    if not country_code:
-        return "🌐 未知"
-    return f"{_flag(country_code)} {COUNTRY_NAMES.get(country_code, country_code)}"
+    if country_code in {"US", "SG", "JP", "HK"}:
+        return f"{_flag(country_code)} {COUNTRY_NAMES.get(country_code, country_code)}"
+    return "🌐 其他国家"
 
 
 def _numbered_name(label: str, number: int) -> str:
