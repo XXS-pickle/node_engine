@@ -96,6 +96,16 @@ class OutputTests(unittest.TestCase):
         self.assertIn("🌐 其他国家", groups)
         self.assertIn("🇨🇦 加拿大 01", groups["🌐 其他国家"]["proxies"])
 
+    def test_less_common_countries_get_chinese_names(self):
+        nodes = [make_node("one", "ES"), make_node("two", "MX")]
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            write_outputs(output, nodes, [])
+            clash = yaml.safe_load((output / "clash.yaml").read_text(encoding="utf-8"))
+        names = [proxy["name"] for proxy in clash["proxies"]]
+        self.assertEqual(names, ["🇪🇸 西班牙 01", "🇲🇽 墨西哥 01"])
+        self.assertNotIn("ES ", " ".join(names))
+
     def test_output_generates_manual_auto_speed_and_region_groups(self):
         nodes = [make_node("one", "HK", 20.0), make_node("two", "JP", 5.0), make_node("three", "JP")]
         with TemporaryDirectory() as directory:
