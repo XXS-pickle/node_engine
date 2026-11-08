@@ -1,16 +1,12 @@
-# Public aggregate subscriptions. One final feed per project; no upstream recursion.
-https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/clash.yaml
-https://raw.githubusercontent.com/wuge0/free-nodes/main/output/clash.yaml
-https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.meta.yml
+# User-selected subscription inputs. Generated outputs are published separately.
+https://sub.scpnb.top/base64
+https://raw.githubusercontent.com/go4sharing/sub/main/sub.yaml
+https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub
+https://stymei.445569.xyz/
+https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/master/list.txt
+https://github.com/Au1rxx/free-vpn-subscriptions/raw/main/output/clash.yaml
 https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/splitted/mixed
 https://raw.githubusercontent.com/free-nodes/v2rayfree/main/sub
 https://raw.githubusercontent.com/Barabama/FreeNodes/refs/heads/main/nodes/merged.yaml
 https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/clash_config.yaml
-https://blog.ermao.net/sub/clash/ermao.net
-https://raw.githubusercontent.com/Pawdroid/Free-servers/main/sub
-https://raw.githubusercontent.com/free18/v2ray/main/c.yaml
-https://raw.githubusercontent.com/snakem982/proxypool/main/source/clash-meta-2.yaml
-https://raw.githubusercontent.com/shaoyouvip/free/main/all.yaml
-https://raw.githubusercontent.com/go4sharing/sub/main/sub.yaml
-https://sub.scpnb.top/base64
-https://raw.githubusercontent.com/chengaopan/AutoMergePublicNodes/master/list.txt
+https://gh-proxy.com/raw.githubusercontent.com/Ruk1ng001/freeSub/main/clash.yaml
