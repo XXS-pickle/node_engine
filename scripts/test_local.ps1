@@ -85,7 +85,7 @@ try {
     }
 
     $env:MAX_NODES = "0"
-    $env:MAX_OUTPUT_NODES = "500"
+    $env:MAX_OUTPUT_NODES = "700"
     $env:MAX_MIHOMO_CANDIDATES = "5000"
     $env:SOURCE_QUALITY_STATE = "$WorkDir\source-quality.json"
     $env:TELEGRAM_DYNAMIC_SOURCES_ENABLED = "1"

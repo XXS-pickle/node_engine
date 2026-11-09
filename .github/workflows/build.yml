@@ -272,7 +272,7 @@ jobs:
           FETCH_WORKERS: "4"
           ALIYUN_FC_ENABLED: "0"
           MAX_NODES: "0"
-          MAX_OUTPUT_NODES: "500"
+          MAX_OUTPUT_NODES: "700"
           MAX_MIHOMO_CANDIDATES: "5000"
           SOURCE_QUALITY_STATE: ".work/source-quality.json"
           TELEGRAM_DYNAMIC_SOURCES_ENABLED: "1"

@@ -417,7 +417,7 @@ def run(args: argparse.Namespace) -> int:
     )
     nodes_alive = len(nodes)
     nodes_failed = max(0, nodes_tested - nodes_alive)
-    max_output_nodes = _int_env("MAX_OUTPUT_NODES", 300)
+    max_output_nodes = _int_env("MAX_OUTPUT_NODES", 700)
     if max_output_nodes > 0:
         nodes = _select_output_nodes(nodes, max_output_nodes)
     final_nodes = len(nodes)
