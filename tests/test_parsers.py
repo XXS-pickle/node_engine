@@ -87,6 +87,12 @@ proxies:
         self.assertEqual(nodes[0].clash["type"], "trojan")
         self.assertIn("trojan://", nodes[0].uri)
 
+    def test_clash_yaml_tolerates_control_characters_in_names(self):
+        text = "proxies:\n  - name: demo\x9fbroken\n    type: trojan\n    server: example.com\n    port: 443\n    password: secret\n    sni: example.com\n"
+        nodes = parse_document(text, "test")
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].clash["type"], "trojan")
+
     def test_duplicate_fragments_share_key(self):
         first = parse_uri(
             "vless://00000000-0000-4000-8000-000000000001@example.com:443?encryption=none&type=tcp#one",

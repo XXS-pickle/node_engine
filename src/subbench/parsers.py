@@ -118,10 +118,18 @@ def extract_uris(text: str) -> list[str]:
     return [match.rstrip(".,);]}") for match in URI_PATTERN.findall(html.unescape(candidate))]
 
 
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+
+
+def _sanitize_yaml(text: str) -> str:
+    """Replace control characters that YAML rejects; some feeds ship corrupted names."""
+    return _CONTROL_CHARS_RE.sub(" ", text)
+
+
 def count_raw_entries(text: str) -> int:
     count = len(extract_uris(text))
     try:
-        document = yaml.safe_load(text)
+        document = yaml.safe_load(_sanitize_yaml(text))
     except yaml.YAMLError:
         return count
     if isinstance(document, dict) and isinstance(document.get("proxies"), list):
@@ -144,7 +152,7 @@ def parse_document(
             continue
 
     try:
-        document = yaml.safe_load(text)
+        document = yaml.safe_load(_sanitize_yaml(text))
     except yaml.YAMLError:
         document = None
     if isinstance(document, dict) and isinstance(document.get("proxies"), list):

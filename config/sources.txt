@@ -17,3 +17,14 @@ https://gist.githubusercontent.com/shuaidaoya/9e5cf2749c0ce79932dd9229d9b4162b/r
 https://cdn.jsdelivr.net/gh/xiaoji235/airport-free/clash/clashnodecc.txt
 https://www.xrayvip.com/free.yaml
 https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/mini.txt
+https://xmxosfepggzm.503403.xyz
+https://sunmiao4458.github.io/free-proxy-airport/clash.yaml
+https://tian.zmxoo.xyz/subapi
+https://raw.githubusercontent.com/SnapdragonLee/SystemProxy/master/dist/clash_config.yaml
+https://raw.githubusercontent.com/cosocr/free/main/dist/clash.yaml
+https://raw.githubusercontent.com/steam-100/free-proxy-sub/data/clash.yaml
+https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/by-country/clash-HK.yaml
+https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/by-country/clash-TW.yaml
+https://raw.githubusercontent.com/zhangkaiitugithub/passcro/main/speednodes.yaml
+https://raw.githubusercontent.com/firefoxmmx2/v2rayshare_subcription/main/subscription/clash_sub.yaml
+https://raw.githubusercontent.com/a2470982985/getNode/main/clash.yaml
